@@ -93,7 +93,7 @@
 </head>
 <body>
 <header><div class="in">
-  <h1>作業日報 <small>Ver 11/02-h</small></h1>
+  <h1>作業日報 <small>Ver 11/02-i</small></h1>
   <div class="row" style="flex-wrap:nowrap;gap:8px">
     <button class="icon-btn" id="openSettings" aria-label="設定">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -309,15 +309,23 @@ $("#progDlg").addEventListener("cancel", (e) => { if (busy) e.preventDefault(); 
 
 const CANCELLED = new Error("キャンセルしました");
 let cancelJob = false;
-// 実行中の処理を止める。止まるのを待って処理記録も消す（COCONA は処理側の finally でログアウトする）
+// 実行中の処理を止める（COCONA は処理側の finally でログアウトする）。止まるまで時間がかかるので、
+// 画面は先に閉じ、止まるのを裏で待ってから処理記録と送信データを消す
 async function stopRun(branch) {
-  let asked = false;
-  for (let i = 0; i < 20; i++) {
-    const run = (await gh(`/actions/workflows/${WORKFLOW}/runs?branch=${encodeURIComponent(branch)}&per_page=5`)).workflow_runs[0];
-    if (run?.status === "completed") return gh(`/actions/runs/${run.id}`, { method: "DELETE", allow404: true });
-    if (run && !asked) { asked = true; try { await gh(`/actions/runs/${run.id}/cancel`, { method: "POST" }); } catch {} }
-    await sleep(2000);
-  }
+  const find = async () => (await gh(`/actions/workflows/${WORKFLOW}/runs?branch=${encodeURIComponent(branch)}&per_page=5`)).workflow_runs[0];
+  let run = null;
+  for (let i = 0; i < 10 && !run; i++) { run = await find(); if (!run) await sleep(2000); }
+  if (run && run.status !== "completed") { try { await gh(`/actions/runs/${run.id}/cancel`, { method: "POST" }); } catch {} }
+  (async () => {
+    try {
+      for (let i = 0; i < 60; i++) {
+        run = await find();
+        if (run?.status === "completed") { await gh(`/actions/runs/${run.id}`, { method: "DELETE", allow404: true }); break; }
+        await sleep(3000);
+      }
+    } catch {}
+    try { await gh(`/git/refs/heads/${branch}`, { method: "DELETE", allow404: true }); } catch {}
+  })();
 }
 // 一時ブランチに依頼を置いて処理を起動し、結果を受け取って、送信データと処理記録を消す
 async function runJob(request, stageText) {
@@ -367,7 +375,7 @@ async function runJob(request, stageText) {
     await gh(`/git/refs/heads/${branch}`, { method: "DELETE", allow404: true });
     return out;
   } catch (e) {
-    if (sent && e === CANCELLED) { try { await stopRun(branch); } catch {} }
+    if (sent && e === CANCELLED) { try { await stopRun(branch); } catch {} throw e; }
     if (sent) { try { await gh(`/git/refs/heads/${branch}`, { method: "DELETE", allow404: true }); } catch {} }
     throw e;
   } finally {
