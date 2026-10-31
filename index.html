@@ -12,12 +12,12 @@
 <style>
   :root {
     color-scheme: light dark;
-    --bg: #f4f6f9; --card: #ffffff; --ink: #1f2933; --sub: #616e7c; --line: #d9dee5; --line-strong: #8f99a5;
+    --bg: #f4f6f9; --card: #ffffff; --ink: #1f2933; --sub: #616e7c; --line: #d9dee5; --line-strong: #8f99a5; --quit-line: #333333;
     --accent: #0b63c5; --accent-ink: #ffffff; --ok: #1e7b3c; --err: #b42318; --warn: #9a5b00;
     --track: #e4e8ee; --shade: rgba(15, 23, 42, .45); --maxw: 1100px;
   }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #14181d; --card: #1d232b; --ink: #e6e9ed; --sub: #9aa5b1; --line: #33404d; --line-strong: #7a8796;
+    :root { --bg: #14181d; --card: #1d232b; --ink: #e6e9ed; --sub: #9aa5b1; --line: #33404d; --line-strong: #7a8796; --quit-line: #7a8796;
       --accent: #4c9bf0; --accent-ink: #0b1220; --ok: #5cc27e; --err: #f07167; --warn: #e3a83c;
       --track: #2b3440; --shade: rgba(0, 0, 0, .6); }
   }
@@ -41,6 +41,7 @@
   .icon-btn { width: 44px; height: 44px; padding: 0; display: grid; place-items: center; border-radius: 50%; border-width: 1px; }
   .icon-btn svg { width: 24px; height: 24px; }
   .quit { padding: 8px 16px; border-color: var(--err); color: var(--err); font-weight: 600; }
+  #quitApp { border-color: var(--quit-line); }
   label { display: block; font-size: .9rem; color: var(--sub); margin: 12px 0 4px; }
   input[type=text], input[type=password], input[type=email], input[type=date] { padding: 10px; font-size: 1rem; font-family: inherit;
     border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
@@ -93,7 +94,7 @@
 </head>
 <body>
 <header><div class="in">
-  <h1>作業日報 <small>Ver 11/02-j</small></h1>
+  <h1>作業日報 <small>Ver 11/02-k</small></h1>
   <div class="row" style="flex-wrap:nowrap;gap:8px">
     <button class="icon-btn" id="openSettings" aria-label="設定">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
