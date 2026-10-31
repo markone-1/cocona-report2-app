@@ -71,13 +71,15 @@
   .view-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 16px; background: var(--card); border-bottom: 1px solid var(--line); }
   .view-head h2 { font-size: 1.05rem; margin: 0; }
   .view-body { flex: 1; overflow: auto; padding: 12px; }
-  .paper { width: 1210px; margin: 0 auto 16px; padding: 16px; background: #fff; color: #000; color-scheme: light; border: 1px solid var(--line); }
+  .paper { width: 1232px; margin: 0 auto 16px; padding: 16px; background: #fff; color: #000; color-scheme: light; border: 1px solid var(--line); }
   .paper h3 { margin: 0; text-align: center; color: #0070c0; font-size: 1.4rem; letter-spacing: .1em; }
   .paper .meta { display: flex; justify-content: space-between; gap: 16px; margin: 6px 0 10px; font-size: .9rem; }
   .paper table { border-collapse: collapse; width: 100%; table-layout: fixed; border: 2px solid #0070c0; }
   .paper th { background: #ddebf7; color: #0070c0; font-size: .78rem; padding: 4px 2px; border: 1px solid #7f9db9; line-height: 1.25; }
   .paper td { border: 1px solid #7f9db9; padding: 0; font-size: .85rem; vertical-align: middle; }
   .paper td input, .paper td textarea { width: 100%; border: 0; background: transparent; color: #000; font: inherit; padding: 5px 3px; display: block; resize: none; }
+  .paper td select { width: 100%; border: 0; background: transparent; color: #000; font: inherit; padding: 5px 0; text-align: center; }
+  .paper .zero { margin: 0; font-size: 1rem; }
   .paper td input:focus, .paper td textarea:focus { outline: 2px solid #0b63c5; outline-offset: -2px; background: #fffbe6; }
   .paper td.n input { text-align: right; }
   .paper td.c input { text-align: center; }
@@ -94,7 +96,7 @@
 </head>
 <body>
 <header><div class="in">
-  <h1>作業日報 <small>Ver 11/02-l</small></h1>
+  <h1>作業日報 <small>Ver 11/02-m</small></h1>
   <div class="row" style="flex-wrap:nowrap;gap:8px">
     <button class="icon-btn" id="openSettings" aria-label="設定">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -416,16 +418,16 @@ $("#fetchBtn").onclick = async () => {
 };
 
 // 日報の表示・編集：Excel と同じ並びの紙面をアプリ内に表示する（列の定義は build_nippo.py と合わせる）
-const AREAS = ["下田", "南伊豆", "河津", "東伊豆", "松崎", "西伊豆"];
+const AREAS = ["下田営業所", "南伊豆支店", "河津支店", "東伊豆支店", "伊東", "松崎支店", "西伊豆支店", "地区外"]; // COCONA から取れないときの予備
 const SUM_KEYS = ["main", "touyaku", "plate", "sonota", "uriage", "genkin"];
 const PARTS = ["main", "touyaku", "plate", "sonota"];
 // [キー, 見出し, 幅px, 書式] n=数値 c=中央 t=折り返し b=太字
 const VIEW_COLS = {
-  seisou: [["area", "地区", 62, "c"], ["customer_no", "顧客番号", 64, "c"], ["name", "得意先", 124, "t"], ["address", "設置場所", 160, "t"],
+  seisou: [["area", "地区", 84, "c"], ["customer_no", "顧客番号", 64, "c"], ["name", "得意先", 124, "t"], ["address", "設置場所", 160, "t"],
     ["tantou", "担当", 54, "c"], ["persons", "人槽", 40, "n"], ["volume", "処理量(㎥)", 52, "n"], ["paren", "( )内記入値", 54, "n"],
     ["main", "清掃", 66, "n"], ["touyaku", "投薬", 54, "n"], ["plate", "プレート", 54, "n"], ["sonota", "その他", 54, "n"],
     ["uriage", "売上額", 68, "nb"], ["genkin", "現金入金", 62, "n"], ["bikou", "備考", 170, "t"]],
-  tenken: [["area", "地区", 62, "c"], ["customer_no", "顧客番号", 64, "c"], ["name", "得意先", 136, "t"], ["address", "設置場所", 200, "t"],
+  tenken: [["area", "地区", 84, "c"], ["customer_no", "顧客番号", 64, "c"], ["name", "得意先", 136, "t"], ["address", "設置場所", 200, "t"],
     ["tantou", "点検者", 54, "c"], ["persons", "人槽", 40, "n"], ["main", "点検", 66, "n"], ["touyaku", "投薬", 54, "n"],
     ["plate", "プレート", 54, "n"], ["sonota", "その他", 54, "n"], ["uriage", "売上額", 68, "nb"], ["genkin", "現金入金", 62, "n"],
     ["bikou", "備考", 170, "t"]],
@@ -446,12 +448,14 @@ function peopleLabel(rows, label) {
   return `${label}：` + [...groups].map(([a, l]) => `${l.join("・")}（${a}）`).join("／");
 }
 const el = (tag, cls, text) => { const x = document.createElement(tag); if (cls) x.className = cls; if (text !== undefined) x.textContent = text; return x; };
+const areaList = () => edit.areas?.length ? edit.areas : AREAS;
 function areaOrder(rows) {
-  const a = [...new Set(rows.map((r) => r.area || "地区なし"))];
-  return a.sort((p, q) => { const i = AREAS.indexOf(p), j = AREAS.indexOf(q); return (i < 0 ? 99 : i) - (j < 0 ? 99 : j) || p.localeCompare(q, "ja"); });
+  const a = [...new Set(rows.map((r) => r.area || "地区なし"))], order = areaList();
+  return a.sort((p, q) => { const i = order.indexOf(p), j = order.indexOf(q); return (i < 0 ? 99 : i) - (j < 0 ? 99 : j) || p.localeCompare(q, "ja"); });
 }
 function refreshSums(kind) {
   const rows = edit[kind], box = $(`#view_${kind}`);
+  if (!rows.length) return;
   box.querySelectorAll("[data-sum]").forEach((c) => {
     const [area, key] = c.dataset.sum.split("|");
     c.textContent = fmt(rows.filter((r) => !area || (r.area || "地区なし") === area).reduce((t, r) => t + toNum(r[key]), 0));
@@ -460,7 +464,8 @@ function refreshSums(kind) {
 }
 function makeCell(kind, row, tr, [key, , , f]) {
   const td = el("td", f.includes("n") ? "n" : f.includes("c") ? "c" : ""); if (f.includes("b")) td.classList.add("b");
-  const inp = el(f.includes("t") ? "textarea" : "input");
+  const inp = el(key === "area" ? "select" : f.includes("t") ? "textarea" : "input");
+  if (key === "area") ["", ...new Set([...areaList(), row.area || ""])].forEach((a, i) => { if (i === 0 || a) inp.add(new Option(a, a)); });
   if (f.includes("t")) inp.rows = 2;
   if (f.includes("n")) inp.inputMode = "decimal";
   inp.value = showVal(key, row[key]); inp.dataset.key = key; inp.setAttribute("aria-label", key);
@@ -478,6 +483,19 @@ function makeCell(kind, row, tr, [key, , , f]) {
 }
 function renderSection(kind, title) {
   const cols = VIEW_COLS[kind], rows = edit[kind], box = el("section", "paper"); box.id = `view_${kind}`;
+  const addButton = () => {
+    const foot = el("div", "foot"), add = el("button", "add", "＋ 行を追加");
+    add.onclick = () => {
+      rows.push({ area: "", customer_no: "", name: "", address: "", tantou: "", persons: "", volume: "", paren: "", main: "", touyaku: "", plate: "", sonota: "", uriage: "", genkin: "", bikou: "" });
+      viewDirty = true; renderView();
+    };
+    foot.appendChild(add);
+    return foot;
+  };
+  if (!rows.length) { // 0件のときは表を作らない
+    box.append(el("p", "zero", `${edit.date.replace(/-/g, "/")} の${kind === "seisou" ? "清掃" : "点検"}は０件です`), addButton());
+    return box;
+  }
   box.appendChild(el("h3", "", title));
   const meta = el("div", "meta");
   meta.append(el("span", "", `作業日：${wareki(edit.date)}`), el("span", "people"));
@@ -505,16 +523,9 @@ function renderSection(kind, title) {
     });
     sumRow("sub", `${a} 小計（${list.length}件）`, a);
   });
-  if (!rows.length) { const c = t.insertRow().insertCell(); c.colSpan = cols.length + 1; c.style.padding = "10px"; c.style.textAlign = "center"; c.textContent = "COCONAにこの作業日の登録はありません"; }
   sumRow("total", `合　計（${rows.length}件）`, "");
   box.appendChild(t);
-  const foot = el("div", "foot"), add = el("button", "add", "＋ 行を追加");
-  add.onclick = () => {
-    rows.push({ area: "", customer_no: "", name: "", address: "", tantou: "", persons: "", volume: "", paren: "", main: "", touyaku: "", plate: "", sonota: "", uriage: "", genkin: "", bikou: "" });
-    viewDirty = true; renderView();
-  };
-  foot.append(add);
-  box.appendChild(foot);
+  box.appendChild(addButton());
   return box;
 }
 function renderView() {
