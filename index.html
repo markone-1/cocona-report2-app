@@ -90,7 +90,7 @@
 </head>
 <body>
 <header><div class="in">
-  <h1>作業日報 <small>Ver 11/02-e</small></h1>
+  <h1>作業日報 <small>Ver 11/02-f</small></h1>
   <div class="row" style="flex-wrap:nowrap;gap:8px">
     <button class="icon-btn" id="openSettings" aria-label="設定">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -167,6 +167,11 @@
   </div>
 </dialog>
 
+<dialog id="askDlg">
+  <div class="dlg-body"><p id="askMsg" style="margin:0;white-space:pre-wrap"></p></div>
+  <div class="dlg-foot"><button id="askNo">キャンセル</button><button id="askYes" class="primary">OK</button></div>
+</dialog>
+
 <dialog id="progDlg">
   <div class="dlg-head"><h2 id="progTitle">処理中</h2></div>
   <div class="dlg-body">
@@ -184,6 +189,17 @@ const API = "https://api.github.com";
 const WORKFLOW = "nippo.yml";
 const DEFAULT_REPO = "markone-1/cocona-report2";
 const $ = (s) => document.querySelector(s);
+// 確認・お知らせはアプリ内の画面で出す（アプリ内ブラウザ等では confirm が出ずに自動でキャンセルになるため）
+function ask(msg, one) {
+  return new Promise((resolve) => {
+    const d = $("#askDlg"), done = (v) => { d.close(); resolve(v); };
+    $("#askMsg").textContent = msg; $("#askNo").classList.toggle("hidden", !!one);
+    $("#askYes").onclick = () => done(true); $("#askNo").onclick = () => done(false);
+    d.oncancel = (e) => { e.preventDefault(); done(false); };
+    d.showModal();
+  });
+}
+const note = (msg) => ask(msg, true);
 
 // ── 設定（同じサイトの作業日報OCRと混ざらないよう nippo_ を付けて保存。トークンは旧アプリの設定があれば引き継ぐ） ──
 const mem = {};
@@ -218,16 +234,16 @@ $("#openSettings").onclick = () => { const c = cfg(); $("#repo").value = c.repo;
 $("#closeSettings").onclick = $("#cancelCfg").onclick = () => $("#settingsDlg").close();
 $("#saveCfg").onclick = () => {
   const repo = $("#repo").value.trim(), token = $("#token").value.trim();
-  if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return alert("処理用リポジトリは「ユーザー名/リポジトリ名」の形で入力してください");
-  if (!token) return alert("GitHub アクセストークンを入力してください");
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return note("処理用リポジトリは「ユーザー名/リポジトリ名」の形で入力してください");
+  if (!token) return note("GitHub アクセストークンを入力してください");
   store.set("nippo_repo", repo); store.set("nippo_token", token);
-  if (!storageOk) alert("このブラウザでは設定を保存できません。シークレットモードを使っていないか確認してください。");
+  if (!storageOk) note("このブラウザでは設定を保存できません。シークレットモードを使っていないか確認してください。");
   $("#settingsDlg").close(); updateUI();
 };
 $("#mailAdd").onclick = () => {
   const a = $("#mailInput").value.trim();
-  if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(a)) return alert("メールアドレスの形式が正しくありません");
-  const l = mailTo(); if (l.includes(a)) return alert("このアドレスは登録済みです");
+  if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(a)) return note("メールアドレスの形式が正しくありません");
+  const l = mailTo(); if (l.includes(a)) return note("このアドレスは登録済みです");
   l.push(a); store.set("nippo_mailTo", JSON.stringify(l)); $("#mailInput").value = ""; renderMail(); updateUI();
 };
 
@@ -346,10 +362,10 @@ async function act(title, fn) {
   } catch (e) { prog.finish(false, e.message); }
   finally { busy = false; updateUI(); }
 }
-$("#fetchBtn").onclick = () => {
+$("#fetchBtn").onclick = async () => {
   const d = $("#workDate").value;
-  if (!d) return alert("作業日を選んでください");
-  if (report?.edited && !confirm("編集した日報は破棄されます。作成し直しますか？")) return;
+  if (!d) return note("作業日を選んでください");
+  if (report?.edited && !(await ask("編集した日報は破棄されます。作成し直しますか？"))) return;
   act("日報作成", async () => {
     const r = await runJob({ mode: "fetch", date: d }, "日報作成中");
     if (r.res.error) throw new Error(r.res.error);
@@ -444,7 +460,7 @@ function renderSection(kind, title) {
       cols.forEach((c) => tr.appendChild(makeCell(kind, row, tr, c)));
       const td = tr.insertCell(); td.className = "no";
       const del = el("button", "del", "×"); del.setAttribute("aria-label", "行を削除");
-      del.onclick = () => { if (confirm("この行を削除しますか？")) { rows.splice(rows.indexOf(row), 1); viewDirty = true; renderView(); } };
+      del.onclick = async () => { if (await ask("この行を削除しますか？")) { rows.splice(rows.indexOf(row), 1); viewDirty = true; renderView(); } };
       td.appendChild(del);
     });
     sumRow("sub", `${a} 小計（${list.length}件）`, a);
@@ -480,13 +496,13 @@ $("#viewSave").onclick = () => {
   $("#status").textContent = reportLabel() + (report.edited ? "　編集を保存しました" : "");
   $("#viewScreen").classList.add("hidden");
 };
-$("#viewCancel").onclick = () => {
-  if (viewDirty && !confirm("編集した内容を破棄しますか？")) return;
+$("#viewCancel").onclick = async () => {
+  if (viewDirty && !(await ask("編集した内容を破棄しますか？"))) return;
   $("#viewScreen").classList.add("hidden");
 };
 $("#mailBtn").onclick = () => {
   const to = mailTo();
-  if (!to.length) return alert("右上の歯車から送信先メールアドレスを登録してください");
+  if (!to.length) return note("右上の歯車から送信先メールアドレスを登録してください");
   $("#mailToText").textContent = to.join("、");
   $("#mailDlg").showModal();
 };
@@ -508,12 +524,12 @@ function resetReport() {
   $("#status").textContent = "日報を作成すると押せるようになります。";
   updateUI();
 }
-$("#clearBtn").onclick = () => { if (confirm("日報のデータを削除して、初期状態に戻しますか？")) resetReport(); };
+$("#clearBtn").onclick = async () => { if (await ask("日報のデータを削除して、初期状態に戻しますか？")) resetReport(); };
 
 // ── 終了：送信データ・処理記録を全削除（他端末の処理中ジョブは残す）して、画面上のデータを破棄 ──
 $("#quitApp").onclick = async () => {
-  if (busy) return alert("処理中は終了できません。");
-  if (!confirm("アプリを終了しますか？\n画面のデータと、送信データ・処理の記録をすべて削除します。")) return;
+  if (busy) return note("処理中は終了できません。");
+  if (!(await ask("アプリを終了しますか？\n画面のデータと、送信データ・処理の記録をすべて削除します。"))) return;
   const b = $("#quitApp"); b.disabled = true; b.textContent = "削除中…";
   let msg = "";
   try {
