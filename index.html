@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>作業日報</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#fdf0f3">
+<style>
+  :root {
+    --bg: #f4f6f9; --card: #ffffff; --ink: #1f2933; --sub: #616e7c; --line: #d9dee5; --line-strong: #8f99a5;
+    --accent: #0b63c5; --accent-ink: #ffffff; --ok: #1e7b3c; --err: #b42318; --warn: #9a5b00;
+    --track: #e4e8ee; --shade: rgba(15, 23, 42, .45); --maxw: 1100px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #14181d; --card: #1d232b; --ink: #e6e9ed; --sub: #9aa5b1; --line: #33404d; --line-strong: #7a8796;
+      --accent: #4c9bf0; --accent-ink: #0b1220; --ok: #5cc27e; --err: #f07167; --warn: #e3a83c;
+      --track: #2b3440; --shade: rgba(0, 0, 0, .6); }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 system-ui, "Noto Sans JP", sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--card); border-bottom: 1px solid var(--line); }
+  header .in { max-width: var(--maxw); margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { font-size: 1.2rem; margin: 0; }
+  header small { font-weight: 400; font-size: .75rem; color: var(--sub); }
+  main { max-width: var(--maxw); margin: 0 auto; padding: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+  .card h2 { font-size: 1.05rem; margin: 0 0 10px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  button { appearance: none; border: 2px solid var(--line-strong); background: var(--card); color: var(--ink);
+    border-radius: 10px; padding: 12px 16px; font-size: 1rem; cursor: pointer; font-family: inherit; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button.green { background: #1e7b3c; border-color: #1e7b3c; color: #fff; font-weight: 600; }
+  button.small { padding: 4px 10px; font-size: .9rem; border-width: 1px; }
+  button:disabled { opacity: .45; cursor: default; }
+  .icon-btn { width: 44px; height: 44px; padding: 0; display: grid; place-items: center; border-radius: 50%; border-width: 1px; }
+  .icon-btn svg { width: 24px; height: 24px; }
+  .quit { padding: 8px 16px; border-color: var(--err); color: var(--err); font-weight: 600; }
+  label { display: block; font-size: .9rem; color: var(--sub); margin: 12px 0 4px; }
+  input[type=text], input[type=password], input[type=email], input[type=date] { padding: 10px; font-size: 1rem; font-family: inherit;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+  .wide { width: 100%; }
+  .muted { color: var(--sub); font-size: .9rem; }
+  .warn { color: var(--warn); }
+  .hidden { display: none !important; }
+  .scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; }
+  th { background: var(--bg); color: var(--sub); font-size: .8rem; font-weight: 600; padding: 6px 4px; white-space: nowrap; border-bottom: 1px solid var(--line); }
+  td { padding: 2px; border-bottom: 1px solid var(--line); }
+  td input { width: 100%; padding: 8px 6px; font-size: .95rem; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--ink); font-family: inherit; }
+  td input:focus { border-color: var(--accent); background: var(--bg); outline: none; }
+  td input.n { text-align: right; }
+  td.total { text-align: right; font-weight: 600; padding: 8px 6px; white-space: nowrap; }
+  .mail-list { list-style: none; padding: 0; margin: 8px 0 0; }
+  .mail-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--line);
+    border-radius: 8px; margin-bottom: 6px; background: var(--bg); word-break: break-all; }
+  dialog { border: 1px solid var(--line); border-radius: 14px; padding: 0; width: min(520px, calc(100vw - 32px)); background: var(--card); color: var(--ink); }
+  dialog::backdrop { background: var(--shade); }
+  .dlg-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .dlg-head h2 { font-size: 1.1rem; margin: 0; }
+  .dlg-body { padding: 16px; }
+  .dlg-foot { padding: 12px 16px; border-top: 1px solid var(--line); display: flex; gap: 10px; justify-content: flex-end; }
+  .bar { height: 14px; background: var(--track); border-radius: 7px; overflow: hidden; margin: 14px 0 6px; }
+  .bar > div { height: 100%; width: 0; background: var(--accent); border-radius: 7px; transition: width .4s ease; }
+  .bar.err > div { background: var(--err); } .bar.ok > div { background: var(--ok); }
+  #stage { font-weight: 600; margin: 0; }
+  #errMsg { color: var(--err); margin: 10px 0 0; white-space: pre-wrap; }
+  .quit-screen { position: fixed; inset: 0; z-index: 50; background: var(--bg); display: grid; place-items: center; text-align: center; padding: 24px; }
+  .quit-title { font-size: 1.4rem; font-weight: 700; margin: 0 0 8px; }
+</style>
+</head>
+<body>
+<header><div class="in">
+  <h1>作業日報 <small>Ver 10/31-a</small></h1>
+  <div class="row" style="flex-wrap:nowrap;gap:8px">
+    <button class="icon-btn" id="openSettings" aria-label="設定">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    </button>
+    <button id="quitApp" class="quit">終了</button>
+  </div>
+</div></header>
+
+<div id="quitScreen" class="quit-screen hidden"><div>
+  <p class="quit-title">終了しました</p>
+  <p class="muted" id="quitMsg"></p>
+  <p class="muted">この画面を閉じてください。</p>
+  <button id="restart" class="primary">もう一度使う</button>
+</div></div>
+
+<main>
+  <section class="card">
+    <h2>1. COCONAから作業データを取得</h2>
+    <div class="row">
+      <input type="date" id="workDate" aria-label="作業日">
+      <button id="fetchBtn" class="primary">COCONAから取得</button>
+    </div>
+    <p class="warn" id="why" style="margin:8px 0 0"></p>
+  </section>
+
+  <div id="editArea" class="hidden">
+    <section class="card">
+      <div class="row" style="justify-content:space-between"><h2 style="margin:0">2. 清掃作業日報</h2><button class="small" data-add="seisou">行を追加</button></div>
+      <div class="scroll" style="margin-top:10px"><table id="t_seisou"></table></div>
+    </section>
+    <section class="card">
+      <div class="row" style="justify-content:space-between"><h2 style="margin:0">3. 点検作業日報</h2><button class="small" data-add="tenken">行を追加</button></div>
+      <div class="scroll" style="margin-top:10px"><table id="t_tenken"></table></div>
+    </section>
+    <section class="card">
+      <h2>4. 保存・メール送信</h2>
+      <div class="row">
+        <button id="saveBtn" class="primary">保存</button>
+        <button id="mailBtn" class="green" style="margin-left:auto" disabled>メール送信</button>
+      </div>
+      <p class="muted" id="saveMsg" style="margin:8px 0 0">内容を確認・編集して「保存」を押すと、Excelをダウンロードしてメール送信できるようになります。</p>
+    </section>
+  </div>
+</main>
+
+<dialog id="settingsDlg">
+  <div class="dlg-head"><h2>設定</h2><button class="icon-btn" id="closeSettings" aria-label="閉じる">✕</button></div>
+  <div class="dlg-body">
+    <p class="muted" style="margin:0">設定はこのタブレットのブラウザ内にだけ保存されます。</p>
+    <label for="repo">処理用リポジトリ（ユーザー名/リポジトリ名）</label>
+    <input type="text" class="wide" id="repo" autocomplete="off">
+    <label for="token">GitHub アクセストークン</label>
+    <input type="password" class="wide" id="token" autocomplete="off">
+    <label for="mailInput" style="margin-top:18px">日報の送信先メールアドレス</label>
+    <div class="row" style="flex-wrap:nowrap">
+      <input type="email" class="wide" id="mailInput" placeholder="example@example.com" autocomplete="off" inputmode="email">
+      <button id="mailAdd" style="flex:none">登録</button>
+    </div>
+    <ul class="mail-list" id="mailList"></ul>
+  </div>
+  <div class="dlg-foot"><button id="cancelCfg">キャンセル</button><button id="saveCfg" class="primary">保存</button></div>
+</dialog>
+
+<dialog id="progDlg">
+  <div class="dlg-head"><h2 id="progTitle">処理中</h2></div>
+  <div class="dlg-body">
+    <p id="stage">準備中…</p>
+    <div class="bar" id="bar"><div id="barFill"></div></div>
+    <p class="muted" style="margin:0"><span id="elapsed">0秒</span></p>
+    <p id="errMsg" class="hidden"></p>
+  </div>
+  <div class="dlg-foot"><button id="closeProg" class="primary" disabled>処理中…</button></div>
+</dialog>
+
+<script>
+"use strict";
+const API = "https://api.github.com";
+const WORKFLOW = "nippo.yml";
+const DEFAULT_REPO = "markone-1/cocona-report2";
+const XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const $ = (s) => document.querySelector(s);
+
+// ── 設定（同じサイトの作業日報OCRと混ざらないよう nippo_ を付けて保存。トークンは旧アプリの設定があれば引き継ぐ） ──
+const mem = {};
+const store = {
+  get(k) { try { const v = localStorage.getItem(k); if (v !== null) return v; } catch {} return mem[k] || ""; },
+  set(k, v) { mem[k] = v; try { localStorage.setItem(k, v); } catch {} },
+};
+function cfg() { return { repo: store.get("nippo_repo") || DEFAULT_REPO, token: store.get("nippo_token") || store.get("token") }; }
+function mailTo() { try { return JSON.parse(store.get("nippo_mailTo") || "[]"); } catch { return []; } }
+function updateUI() {
+  const c = cfg(), to = mailTo();
+  $("#fetchBtn").disabled = busy || !c.token;
+  $("#why").textContent = c.token ? "" : "※ 右上の歯車から「GitHub アクセストークン」を入力して保存してください";
+  $("#saveBtn").disabled = busy;
+  $("#mailBtn").disabled = busy || !saved || !to.length;
+  if (saved && !to.length) $("#saveMsg").textContent = "保存しました。メール送信先を右上の歯車から登録してください。";
+}
+function renderMail() {
+  $("#mailList").innerHTML = "";
+  mailTo().forEach((addr, i) => {
+    const li = document.createElement("li");
+    li.innerHTML = "<span></span><button class=\"small\">削除</button>";
+    li.querySelector("span").textContent = addr;
+    li.querySelector("button").onclick = () => { const l = mailTo(); l.splice(i, 1); store.set("nippo_mailTo", JSON.stringify(l)); renderMail(); updateUI(); };
+    $("#mailList").appendChild(li);
+  });
+}
+$("#openSettings").onclick = () => { const c = cfg(); $("#repo").value = c.repo; $("#token").value = c.token; renderMail(); $("#settingsDlg").showModal(); };
+$("#closeSettings").onclick = $("#cancelCfg").onclick = () => $("#settingsDlg").close();
+$("#saveCfg").onclick = () => {
+  const repo = $("#repo").value.trim(), token = $("#token").value.trim();
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return alert("処理用リポジトリは「ユーザー名/リポジトリ名」の形で入力してください");
+  if (!token) return alert("GitHub アクセストークンを入力してください");
+  store.set("nippo_repo", repo); store.set("nippo_token", token);
+  $("#settingsDlg").close(); updateUI();
+};
+$("#mailAdd").onclick = () => {
+  const a = $("#mailInput").value.trim();
+  if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(a)) return alert("メールアドレスの形式が正しくありません");
+  const l = mailTo(); if (l.includes(a)) return alert("このアドレスは登録済みです");
+  l.push(a); store.set("nippo_mailTo", JSON.stringify(l)); $("#mailInput").value = ""; renderMail(); updateUI();
+};
+
+// ── サーバー通信 ──
+function gh(path, opt = {}) {
+  const c = cfg(), body = opt.body ? JSON.stringify(opt.body) : null;
+  return new Promise((resolve, reject) => {
+    const x = new XMLHttpRequest();
+    x.open(opt.method || "GET", API + `/repos/${c.repo}` + path);
+    x.timeout = 90000;
+    x.setRequestHeader("Authorization", "Bearer " + c.token);
+    x.setRequestHeader("Accept", "application/vnd.github+json");
+    x.setRequestHeader("X-GitHub-Api-Version", "2022-11-28");
+    if (body) x.setRequestHeader("Content-Type", "application/json");
+    x.onload = () => {
+      if (x.status >= 200 && x.status < 300) return resolve(x.status === 204 || !x.responseText ? null : JSON.parse(x.responseText));
+      if (opt.allow404 && x.status === 404) return resolve(null);
+      reject(new Error(`サーバーエラー ${x.status}: ${(x.responseText || "").slice(0, 160)}`));
+    };
+    x.ontimeout = () => reject(new Error("通信が応答しません（電波・Wi-Fiを確認）"));
+    x.onerror = () => reject(new Error("通信できません（電波・Wi-Fi・設定を確認）"));
+    x.send(body);
+  });
+}
+function unb64(s) {
+  const bin = atob(s.replace(/\s/g, "")), u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return u8;
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const prog = {
+  t0: 0, timer: null,
+  open(title) {
+    this.t0 = Date.now(); $("#progTitle").textContent = title; $("#bar").className = "bar"; $("#errMsg").classList.add("hidden");
+    $("#closeProg").disabled = true; $("#closeProg").textContent = "処理中…"; this.set(3, "準備中…");
+    this.timer = setInterval(() => $("#elapsed").textContent = `${Math.round((Date.now() - this.t0) / 1000)}秒`, 1000);
+    $("#progDlg").showModal();
+  },
+  set(p, stage) { $("#barFill").style.width = Math.min(100, p) + "%"; if (stage) $("#stage").textContent = stage; },
+  finish(ok, msg) {
+    clearInterval(this.timer);
+    if (ok) { this.set(100, msg); $("#bar").className = "bar ok"; }
+    else { $("#bar").className = "bar err"; $("#stage").textContent = "エラーで中断しました"; $("#errMsg").textContent = msg; $("#errMsg").classList.remove("hidden"); }
+    $("#closeProg").disabled = false; $("#closeProg").textContent = "閉じる";
+  },
+};
+$("#closeProg").onclick = () => $("#progDlg").close();
+$("#progDlg").addEventListener("cancel", (e) => { if (busy) e.preventDefault(); });
+
+// 一時ブランチに依頼を置いて処理を起動し、結果を受け取って、送信データと処理記録を消す
+async function runJob(request, stageText) {
+  const n = new Date(), p2 = (x) => String(x).padStart(2, "0");
+  const jobId = `${n.getFullYear()}${p2(n.getMonth() + 1)}${p2(n.getDate())}${p2(n.getHours())}${p2(n.getMinutes())}${p2(n.getSeconds())}-` + Math.random().toString(36).slice(2, 6).padEnd(4, "0");
+  const branch = `job/${jobId}`;
+  let runId = null, sent = false, wake = null;
+  try { wake = await navigator.wakeLock?.request("screen"); } catch {}
+  try {
+    prog.set(8, "依頼を送信中…");
+    const main = await gh("/git/ref/heads/main");
+    const base = await gh(`/git/commits/${main.object.sha}`);
+    const t = await gh("/git/trees", { method: "POST", body: { base_tree: base.tree.sha,
+      tree: [{ path: "in/request.json", mode: "100644", type: "blob", content: JSON.stringify(request) }] } });
+    const c = await gh("/git/commits", { method: "POST", body: { message: `job ${jobId}`, tree: t.sha, parents: [main.object.sha] } });
+    await gh("/git/refs", { method: "POST", body: { ref: `refs/heads/${branch}`, sha: c.sha } });
+    sent = true;
+    await gh(`/actions/workflows/${WORKFLOW}/dispatches`, { method: "POST", body: { ref: branch, inputs: { job_id: jobId } } });
+    const r0 = Date.now(); let run = null;
+    while (true) {
+      await sleep(3000);
+      const sec = (Date.now() - r0) / 1000;
+      if (sec > 300) throw new Error("時間切れ（5分）");
+      prog.set(15 + 70 * (1 - Math.exp(-sec / 20)), stageText);
+      const rs = await gh(`/actions/workflows/${WORKFLOW}/runs?branch=${encodeURIComponent(branch)}&per_page=5`);
+      run = rs.workflow_runs[0];
+      if (!run) continue;
+      runId = run.id;
+      if (run.status === "completed") break;
+    }
+    if (run.conclusion !== "success") throw new Error(`処理に失敗しました（${run.conclusion}）。\nしばらくしてからもう一度お試しください。続く場合は管理者に連絡してください。`);
+    prog.set(90, "結果を受信中…");
+    const ref = await gh(`/git/ref/heads/${branch}`);
+    const head = await gh(`/git/commits/${ref.object.sha}`);
+    const files = (await gh(`/git/trees/${head.tree.sha}?recursive=1`)).tree.filter((x) => x.path.startsWith("out/"));
+    const get = async (sha) => unb64((await gh(`/git/blobs/${sha}`)).content);
+    const json = async (name) => JSON.parse(new TextDecoder().decode(await get(files.find((x) => x.path === name).sha)));
+    const res = await json("out/result.json");
+    const out = { res };
+    if (res.ok) {
+      out.data = await json("out/data.json");
+      out.xlsx = await get(files.find((x) => x.path.endsWith(".xlsx")).sha);
+    }
+    prog.set(97, "送信データを削除中…");
+    await gh(`/actions/runs/${runId}`, { method: "DELETE", allow404: true });
+    await gh(`/git/refs/heads/${branch}`, { method: "DELETE", allow404: true });
+    return out;
+  } catch (e) {
+    if (sent) { try { await gh(`/git/refs/heads/${branch}`, { method: "DELETE", allow404: true }); } catch {} }
+    throw e;
+  } finally {
+    try { await wake?.release(); } catch {}
+  }
+}
+function download(name, u8) {
+  const url = URL.createObjectURL(new Blob([u8], { type: XLSX_TYPE }));
+  const a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 2000);
+}
+
+// ── 編集表 ──
+const BASE_COLS = [["area", "地区", 72], ["customer_no", "顧客番号", 84], ["name", "得意先", 150], ["address", "設置場所", 210]];
+const AMOUNTS = (main) => [["main", main, 84, 1], ["touyaku", "投薬", 70, 1], ["plate", "プレート", 70, 1], ["sonota", "その他", 70, 1],
+  ["uriage", "売上額", 84, 1], ["genkin", "現金入金", 80, 1], ["bikou", "備考", 240]];
+const COLS = {
+  seisou: [...BASE_COLS, ["tantou", "担当", 70], ["persons", "人槽", 52, 1], ["volume", "処理量㎥", 66, 1], ["paren", "( )内", 62, 1], ...AMOUNTS("清掃")],
+  tenken: [...BASE_COLS, ["tantou", "点検者", 70], ["persons", "人槽", 52, 1], ...AMOUNTS("点検")],
+};
+let data = null, saved = false, busy = false;
+const toNum = (v) => { const n = parseFloat(String(v ?? "").replace(/[,¥円]/g, "")); return isNaN(n) ? 0 : n; };
+const fmt = (n) => n.toLocaleString("ja-JP");
+function markEdited() {
+  if (!saved) return;
+  saved = false; $("#saveMsg").textContent = "編集しました。もう一度「保存」を押してください。"; updateUI();
+}
+function totalsOf(kind) { return data[kind].reduce((s, r) => s + toNum(r.uriage), 0); }
+function renderTable(kind) {
+  const cols = COLS[kind], t = $(`#t_${kind}`); t.innerHTML = "";
+  const hr = t.insertRow(); hr.innerHTML = cols.map((c) => `<th style="min-width:${c[2]}px">${c[1]}</th>`).join("") + "<th></th>";
+  data[kind].forEach((row, i) => {
+    const tr = t.insertRow();
+    cols.forEach(([key, , , isNum]) => {
+      const inp = document.createElement("input");
+      inp.value = row[key] ?? ""; inp.setAttribute("aria-label", key); if (isNum) { inp.className = "n"; inp.inputMode = "decimal"; }
+      inp.oninput = () => {
+        row[key] = inp.value;
+        if (["main", "touyaku", "plate", "sonota"].includes(key)) {   // 売上額は内訳の合計に自動更新
+          const sum = ["main", "touyaku", "plate", "sonota"].reduce((s, k) => s + toNum(row[k]), 0);
+          row.uriage = sum || ""; tr.querySelector('[aria-label="uriage"]').value = row.uriage;
+        }
+        $(`#sum_${kind}`).textContent = `${data[kind].length}件　売上額 合計 ${fmt(totalsOf(kind))}`; markEdited();
+      };
+      tr.insertCell().appendChild(inp);
+    });
+    const del = document.createElement("button"); del.className = "small"; del.textContent = "×"; del.setAttribute("aria-label", "行を削除");
+    del.onclick = () => { if (confirm("この行を削除しますか？")) { data[kind].splice(i, 1); renderTable(kind); markEdited(); } };
+    tr.insertCell().appendChild(del);
+  });
+  if (!data[kind].length) { const r = t.insertRow().insertCell(); r.colSpan = cols.length + 1; r.className = "muted"; r.style.padding = "12px"; r.textContent = "この作業日の登録はありません"; }
+  const fr = t.insertRow(), fc = fr.insertCell(); fc.colSpan = cols.length + 1; fc.className = "total"; fc.id = `sum_${kind}`;
+  fc.textContent = `${data[kind].length}件　売上額 合計 ${fmt(totalsOf(kind))}`;
+}
+document.querySelectorAll("[data-add]").forEach((b) => b.onclick = () => {
+  const k = b.dataset.add; data[k].push({ area: "", customer_no: "", name: "", address: "", tantou: "", persons: "", volume: "", paren: "", main: "", touyaku: "", plate: "", sonota: "", uriage: "", genkin: "", bikou: "" });
+  renderTable(k); markEdited();
+});
+
+// ── ボタン ──
+async function act(title, fn) {
+  busy = true; updateUI(); prog.open(title);
+  try { prog.finish(true, await fn()); }
+  catch (e) { prog.finish(false, e.message); }
+  finally { busy = false; updateUI(); }
+}
+$("#fetchBtn").onclick = () => {
+  const d = $("#workDate").value;
+  if (!d) return alert("作業日を選んでください");
+  if (data && !saved && !confirm("編集中の内容は破棄されます。取得し直しますか？")) return;
+  act("COCONAから取得", async () => {
+    const r = await runJob({ mode: "fetch", date: d }, "COCONAから作業データを取得中…");
+    if (r.res.error) throw new Error(r.res.error);
+    data = r.data; saved = false;
+    renderTable("seisou"); renderTable("tenken"); $("#editArea").classList.remove("hidden");
+    $("#saveMsg").textContent = "内容を確認・編集して「保存」を押すと、Excelをダウンロードしてメール送信できるようになります。";
+    return `取得しました（清掃 ${r.res.seisou}件・点検 ${r.res.tenken}件）`;
+  });
+};
+$("#saveBtn").onclick = () => act("保存", async () => {
+  const r = await runJob({ mode: "save", data }, "Excelを作成中…");
+  if (r.res.error) throw new Error(r.res.error);
+  download(r.res.excel, r.xlsx); saved = true;
+  $("#saveMsg").textContent = `${r.res.excel} を保存しました（ダウンロードフォルダ）。`;
+  return `${r.res.excel} を保存しました`;
+});
+$("#mailBtn").onclick = () => {
+  const to = mailTo();
+  if (!confirm(`次の宛先に日報を送信しますか？\n${to.join("\n")}`)) return;
+  act("メール送信", async () => {
+    const r = await runJob({ mode: "mail", data, mail_to: to }, "メールを送信中…");
+    if (r.res.error) throw new Error(r.res.error);
+    return `メールを送信しました（${r.res.mail_sent}件）`;
+  });
+};
+
+// ── 終了：送信データ・処理記録を全削除（他端末の処理中ジョブは残す）して、画面上のデータを破棄 ──
+$("#quitApp").onclick = async () => {
+  if (busy) return alert("処理中は終了できません。");
+  if (!confirm("アプリを終了しますか？\n画面のデータと、送信データ・処理の記録をすべて削除します。")) return;
+  const b = $("#quitApp"); b.disabled = true; b.textContent = "削除中…";
+  let msg = "";
+  try {
+    if (cfg().token) {
+      const runs = (await gh("/actions/runs?per_page=100")).workflow_runs;
+      const active = new Set(runs.filter((r) => r.status !== "completed").map((r) => r.head_branch));
+      const refs = (await gh("/git/matching-refs/heads/job/")) || [];
+      let nb = 0, nr = 0;
+      for (const r of refs) if (!active.has(r.ref.replace("refs/heads/", ""))) { await gh(`/git/${r.ref}`, { method: "DELETE", allow404: true }); nb++; }
+      for (const r of runs) if (r.status === "completed") { await gh(`/actions/runs/${r.id}`, { method: "DELETE", allow404: true }); nr++; }
+      msg = `送信データ ${nb} 件・処理の記録 ${nr} 件を削除しました。`;
+    }
+  } catch (e) { msg = "データの削除に失敗しました（" + e.message + "）。"; }
+  b.disabled = false; b.textContent = "終了";
+  data = null; saved = false; $("#editArea").classList.add("hidden");
+  $("#quitMsg").textContent = msg; $("#quitScreen").classList.remove("hidden");
+  try { window.close(); } catch {}
+};
+$("#restart").onclick = () => location.reload();
+
+const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+$("#workDate").value = today;
+updateUI();
+</script>
+</body>
+</html>
