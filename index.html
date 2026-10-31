@@ -66,7 +66,7 @@
 </head>
 <body>
 <header><div class="in">
-  <h1>作業日報 <small>Ver 10/31-d</small></h1>
+  <h1>作業日報 <small>Ver 11/01-a</small></h1>
   <div class="row" style="flex-wrap:nowrap;gap:8px">
     <button class="icon-btn" id="openSettings" aria-label="設定">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -125,7 +125,7 @@
     <p class="muted" style="margin:0 0 4px">送信先</p>
     <p id="mailToText" style="margin:0 0 14px;word-break:break-all"></p>
     <div class="row">
-      <button id="sendFetched" class="green">取得したまま送信</button>
+      <button id="sendFetched" class="green">作成したまま送信</button>
       <button id="sendEdited" class="primary">編集したファイルを選んで送信</button>
     </div>
     <input type="file" id="editedFile" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden">
@@ -329,14 +329,10 @@ $("#fetchBtn").onclick = () => {
     return { msg: `作成しました：${m}`, next: "日報を表示", after: showReport };
   });
 };
-// 日報を表示：Web の共有機能が Excel を扱える環境ならアプリへ直接渡す。
-// Chrome は .xlsx を共有できないので、その場合はダウンロードし、Chrome の「開く」から Excel 等で開く
-async function showReport() {
-  const file = new File([report.xlsx], report.name, { type: XLSX_TYPE });
-  try {
-    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: report.name }); return; }
-  } catch (e) { if (e.name === "AbortError") return; }
+// 日報を表示：タブレットに保存し、Chrome の「開く」やファイルアプリから Excel 等で開く
+function showReport() {
   download(report.name, report.xlsx);
+  $("#status").textContent = `タブレットに保存しました：${report.name}`;
 }
 $("#viewBtn").onclick = showReport;
 function sendMail(u8) {
@@ -367,7 +363,7 @@ $("#editedFile").onchange = async (e) => {
 // ── 終了：送信データ・処理記録を全削除（他端末の処理中ジョブは残す）して、画面上のデータを破棄 ──
 $("#quitApp").onclick = async () => {
   if (busy) return alert("処理中は終了できません。");
-  if (!confirm("アプリを終了しますか？\n画面のデータと、送信データ・処理の記録をすべて削除します。")) return;
+  if (!confirm("アプリを終了しますか？\n画面のデータと、送信データ・処理の記録をすべて削除します。\nタブレットに保存した日報ファイルは残ります。")) return;
   const b = $("#quitApp"); b.disabled = true; b.textContent = "削除中…";
   let msg = "";
   try {
