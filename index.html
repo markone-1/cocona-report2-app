@@ -46,14 +46,6 @@
   .muted { color: var(--sub); font-size: .9rem; }
   .warn { color: var(--warn); }
   .hidden { display: none !important; }
-  .scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
-  table { border-collapse: collapse; width: 100%; }
-  th { background: var(--bg); color: var(--sub); font-size: .8rem; font-weight: 600; padding: 6px 4px; white-space: nowrap; border-bottom: 1px solid var(--line); }
-  td { padding: 2px; border-bottom: 1px solid var(--line); }
-  td input { width: 100%; padding: 8px 6px; font-size: .95rem; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--ink); font-family: inherit; }
-  td input:focus { border-color: var(--accent); background: var(--bg); outline: none; }
-  td input.n { text-align: right; }
-  td.total { text-align: right; font-weight: 600; padding: 8px 6px; white-space: nowrap; }
   .mail-list { list-style: none; padding: 0; margin: 8px 0 0; }
   .mail-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--line);
     border-radius: 8px; margin-bottom: 6px; background: var(--bg); word-break: break-all; }
@@ -74,7 +66,7 @@
 </head>
 <body>
 <header><div class="in">
-  <h1>作業日報 <small>Ver 10/31-a</small></h1>
+  <h1>作業日報 <small>Ver 10/31-b</small></h1>
   <div class="row" style="flex-wrap:nowrap;gap:8px">
     <button class="icon-btn" id="openSettings" aria-label="設定">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -99,25 +91,14 @@
     </div>
     <p class="warn" id="why" style="margin:8px 0 0"></p>
   </section>
-
-  <div id="editArea" class="hidden">
-    <section class="card">
-      <div class="row" style="justify-content:space-between"><h2 style="margin:0">2. 清掃作業日報</h2><button class="small" data-add="seisou">行を追加</button></div>
-      <div class="scroll" style="margin-top:10px"><table id="t_seisou"></table></div>
-    </section>
-    <section class="card">
-      <div class="row" style="justify-content:space-between"><h2 style="margin:0">3. 点検作業日報</h2><button class="small" data-add="tenken">行を追加</button></div>
-      <div class="scroll" style="margin-top:10px"><table id="t_tenken"></table></div>
-    </section>
-    <section class="card">
-      <h2>4. 保存・メール送信</h2>
-      <div class="row">
-        <button id="saveBtn" class="primary">保存</button>
-        <button id="mailBtn" class="green" style="margin-left:auto" disabled>メール送信</button>
-      </div>
-      <p class="muted" id="saveMsg" style="margin:8px 0 0">内容を確認・編集して「保存」を押すと、Excelをダウンロードしてメール送信できるようになります。</p>
-    </section>
-  </div>
+  <section class="card">
+    <h2>2. 日報の確認・メール送信</h2>
+    <div class="row">
+      <button id="viewBtn" class="primary" disabled>日報を表示</button>
+      <button id="mailBtn" class="green" style="margin-left:auto" disabled>メール送信</button>
+    </div>
+    <p class="muted" id="status" style="margin:8px 0 0">作業データを取得すると押せるようになります。</p>
+  </section>
 </main>
 
 <dialog id="settingsDlg">
@@ -136,6 +117,19 @@
     <ul class="mail-list" id="mailList"></ul>
   </div>
   <div class="dlg-foot"><button id="cancelCfg">キャンセル</button><button id="saveCfg" class="primary">保存</button></div>
+</dialog>
+
+<dialog id="mailDlg">
+  <div class="dlg-head"><h2>メール送信</h2><button class="icon-btn" id="closeMail" aria-label="閉じる">✕</button></div>
+  <div class="dlg-body">
+    <p class="muted" style="margin:0 0 4px">送信先</p>
+    <p id="mailToText" style="margin:0 0 14px;word-break:break-all"></p>
+    <div class="row">
+      <button id="sendFetched" class="green">取得したまま送信</button>
+      <button id="sendEdited" class="primary">編集したファイルを選んで送信</button>
+    </div>
+    <input type="file" id="editedFile" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden">
+  </div>
 </dialog>
 
 <dialog id="progDlg">
@@ -166,12 +160,11 @@ const store = {
 function cfg() { return { repo: store.get("nippo_repo") || DEFAULT_REPO, token: store.get("nippo_token") || store.get("token") }; }
 function mailTo() { try { return JSON.parse(store.get("nippo_mailTo") || "[]"); } catch { return []; } }
 function updateUI() {
-  const c = cfg(), to = mailTo();
+  const c = cfg();
   $("#fetchBtn").disabled = busy || !c.token;
   $("#why").textContent = c.token ? "" : "※ 右上の歯車から「GitHub アクセストークン」を入力して保存してください";
-  $("#saveBtn").disabled = busy;
-  $("#mailBtn").disabled = busy || !saved || !to.length;
-  if (saved && !to.length) $("#saveMsg").textContent = "保存しました。メール送信先を右上の歯車から登録してください。";
+  $("#viewBtn").disabled = busy || !report;
+  $("#mailBtn").disabled = busy || !report;
 }
 function renderMail() {
   $("#mailList").innerHTML = "";
@@ -220,6 +213,11 @@ function gh(path, opt = {}) {
     x.send(body);
   });
 }
+function b64(u8) {
+  let s = ""; const n = 0x8000;
+  for (let i = 0; i < u8.length; i += n) s += String.fromCharCode.apply(null, u8.subarray(i, i + n));
+  return btoa(s);
+}
 function unb64(s) {
   const bin = atob(s.replace(/\s/g, "")), u8 = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
@@ -246,7 +244,7 @@ $("#closeProg").onclick = () => $("#progDlg").close();
 $("#progDlg").addEventListener("cancel", (e) => { if (busy) e.preventDefault(); });
 
 // 一時ブランチに依頼を置いて処理を起動し、結果を受け取って、送信データと処理記録を消す
-async function runJob(request, stageText) {
+async function runJob(request, stageText, upload) {
   const n = new Date(), p2 = (x) => String(x).padStart(2, "0");
   const jobId = `${n.getFullYear()}${p2(n.getMonth() + 1)}${p2(n.getDate())}${p2(n.getHours())}${p2(n.getMinutes())}${p2(n.getSeconds())}-` + Math.random().toString(36).slice(2, 6).padEnd(4, "0");
   const branch = `job/${jobId}`;
@@ -256,8 +254,12 @@ async function runJob(request, stageText) {
     prog.set(8, "依頼を送信中…");
     const main = await gh("/git/ref/heads/main");
     const base = await gh(`/git/commits/${main.object.sha}`);
-    const t = await gh("/git/trees", { method: "POST", body: { base_tree: base.tree.sha,
-      tree: [{ path: "in/request.json", mode: "100644", type: "blob", content: JSON.stringify(request) }] } });
+    const tree = [{ path: "in/request.json", mode: "100644", type: "blob", content: JSON.stringify(request) }];
+    if (upload) {
+      const blob = await gh("/git/blobs", { method: "POST", body: { content: b64(upload), encoding: "base64" } });
+      tree.push({ path: "in/upload.xlsx", mode: "100644", type: "blob", sha: blob.sha });
+    }
+    const t = await gh("/git/trees", { method: "POST", body: { base_tree: base.tree.sha, tree } });
     const c = await gh("/git/commits", { method: "POST", body: { message: `job ${jobId}`, tree: t.sha, parents: [main.object.sha] } });
     await gh("/git/refs", { method: "POST", body: { ref: `refs/heads/${branch}`, sha: c.sha } });
     sent = true;
@@ -283,10 +285,8 @@ async function runJob(request, stageText) {
     const json = async (name) => JSON.parse(new TextDecoder().decode(await get(files.find((x) => x.path === name).sha)));
     const res = await json("out/result.json");
     const out = { res };
-    if (res.ok) {
-      out.data = await json("out/data.json");
-      out.xlsx = await get(files.find((x) => x.path.endsWith(".xlsx")).sha);
-    }
+    const xf = files.find((x) => x.path.endsWith(".xlsx"));
+    if (xf) out.xlsx = await get(xf.sha);
     prog.set(97, "送信データを削除中…");
     await gh(`/actions/runs/${runId}`, { method: "DELETE", allow404: true });
     await gh(`/git/refs/heads/${branch}`, { method: "DELETE", allow404: true });
@@ -304,54 +304,8 @@ function download(name, u8) {
   setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 2000);
 }
 
-// ── 編集表 ──
-const BASE_COLS = [["area", "地区", 72], ["customer_no", "顧客番号", 84], ["name", "得意先", 150], ["address", "設置場所", 210]];
-const AMOUNTS = (main) => [["main", main, 84, 1], ["touyaku", "投薬", 70, 1], ["plate", "プレート", 70, 1], ["sonota", "その他", 70, 1],
-  ["uriage", "売上額", 84, 1], ["genkin", "現金入金", 80, 1], ["bikou", "備考", 240]];
-const COLS = {
-  seisou: [...BASE_COLS, ["tantou", "担当", 70], ["persons", "人槽", 52, 1], ["volume", "処理量㎥", 66, 1], ["paren", "( )内", 62, 1], ...AMOUNTS("清掃")],
-  tenken: [...BASE_COLS, ["tantou", "点検者", 70], ["persons", "人槽", 52, 1], ...AMOUNTS("点検")],
-};
-let data = null, saved = false, busy = false;
-const toNum = (v) => { const n = parseFloat(String(v ?? "").replace(/[,¥円]/g, "")); return isNaN(n) ? 0 : n; };
-const fmt = (n) => n.toLocaleString("ja-JP");
-function markEdited() {
-  if (!saved) return;
-  saved = false; $("#saveMsg").textContent = "編集しました。もう一度「保存」を押してください。"; updateUI();
-}
-function totalsOf(kind) { return data[kind].reduce((s, r) => s + toNum(r.uriage), 0); }
-function renderTable(kind) {
-  const cols = COLS[kind], t = $(`#t_${kind}`); t.innerHTML = "";
-  const hr = t.insertRow(); hr.innerHTML = cols.map((c) => `<th style="min-width:${c[2]}px">${c[1]}</th>`).join("") + "<th></th>";
-  data[kind].forEach((row, i) => {
-    const tr = t.insertRow();
-    cols.forEach(([key, , , isNum]) => {
-      const inp = document.createElement("input");
-      inp.value = row[key] ?? ""; inp.setAttribute("aria-label", key); if (isNum) { inp.className = "n"; inp.inputMode = "decimal"; }
-      inp.oninput = () => {
-        row[key] = inp.value;
-        if (["main", "touyaku", "plate", "sonota"].includes(key)) {   // 売上額は内訳の合計に自動更新
-          const sum = ["main", "touyaku", "plate", "sonota"].reduce((s, k) => s + toNum(row[k]), 0);
-          row.uriage = sum || ""; tr.querySelector('[aria-label="uriage"]').value = row.uriage;
-        }
-        $(`#sum_${kind}`).textContent = `${data[kind].length}件　売上額 合計 ${fmt(totalsOf(kind))}`; markEdited();
-      };
-      tr.insertCell().appendChild(inp);
-    });
-    const del = document.createElement("button"); del.className = "small"; del.textContent = "×"; del.setAttribute("aria-label", "行を削除");
-    del.onclick = () => { if (confirm("この行を削除しますか？")) { data[kind].splice(i, 1); renderTable(kind); markEdited(); } };
-    tr.insertCell().appendChild(del);
-  });
-  if (!data[kind].length) { const r = t.insertRow().insertCell(); r.colSpan = cols.length + 1; r.className = "muted"; r.style.padding = "12px"; r.textContent = "この作業日の登録はありません"; }
-  const fr = t.insertRow(), fc = fr.insertCell(); fc.colSpan = cols.length + 1; fc.className = "total"; fc.id = `sum_${kind}`;
-  fc.textContent = `${data[kind].length}件　売上額 合計 ${fmt(totalsOf(kind))}`;
-}
-document.querySelectorAll("[data-add]").forEach((b) => b.onclick = () => {
-  const k = b.dataset.add; data[k].push({ area: "", customer_no: "", name: "", address: "", tantou: "", persons: "", volume: "", paren: "", main: "", touyaku: "", plate: "", sonota: "", uriage: "", genkin: "", bikou: "" });
-  renderTable(k); markEdited();
-});
-
-// ── ボタン ──
+// ── 取得・表示・メール送信 ──
+let report = null, busy = false; // report = {name, xlsx}
 async function act(title, fn) {
   busy = true; updateUI(); prog.open(title);
   try { prog.finish(true, await fn()); }
@@ -361,31 +315,47 @@ async function act(title, fn) {
 $("#fetchBtn").onclick = () => {
   const d = $("#workDate").value;
   if (!d) return alert("作業日を選んでください");
-  if (data && !saved && !confirm("編集中の内容は破棄されます。取得し直しますか？")) return;
   act("COCONAから取得", async () => {
+    report = null;
     const r = await runJob({ mode: "fetch", date: d }, "COCONAから作業データを取得中…");
     if (r.res.error) throw new Error(r.res.error);
-    data = r.data; saved = false;
-    renderTable("seisou"); renderTable("tenken"); $("#editArea").classList.remove("hidden");
-    $("#saveMsg").textContent = "内容を確認・編集して「保存」を押すと、Excelをダウンロードしてメール送信できるようになります。";
-    return `取得しました（清掃 ${r.res.seisou}件・点検 ${r.res.tenken}件）`;
+    report = { name: r.res.excel, xlsx: r.xlsx };
+    const m = `${r.res.excel}（清掃 ${r.res.seisou}件・点検 ${r.res.tenken}件）`;
+    $("#status").textContent = m;
+    return `取得しました：${m}`;
   });
 };
-$("#saveBtn").onclick = () => act("保存", async () => {
-  const r = await runJob({ mode: "save", data }, "Excelを作成中…");
-  if (r.res.error) throw new Error(r.res.error);
-  download(r.res.excel, r.xlsx); saved = true;
-  $("#saveMsg").textContent = `${r.res.excel} を保存しました（ダウンロードフォルダ）。`;
-  return `${r.res.excel} を保存しました`;
-});
-$("#mailBtn").onclick = () => {
+// 日報を表示：タブレットでは共有メニューから Excel 等のアプリを選んで開く。対応しない環境では保存する
+$("#viewBtn").onclick = async () => {
+  const file = new File([report.xlsx], report.name, { type: XLSX_TYPE });
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: report.name }); return; }
+  } catch (e) { if (e.name === "AbortError") return; }
+  download(report.name, report.xlsx);
+};
+function sendMail(u8) {
   const to = mailTo();
-  if (!confirm(`次の宛先に日報を送信しますか？\n${to.join("\n")}`)) return;
+  $("#mailDlg").close();
   act("メール送信", async () => {
-    const r = await runJob({ mode: "mail", data, mail_to: to }, "メールを送信中…");
+    const r = await runJob({ mode: "mail", excel: report.name, mail_to: to }, "メールを送信中…", u8);
     if (r.res.error) throw new Error(r.res.error);
     return `メールを送信しました（${r.res.mail_sent}件）`;
   });
+}
+$("#mailBtn").onclick = () => {
+  const to = mailTo();
+  if (!to.length) return alert("右上の歯車から送信先メールアドレスを登録してください");
+  $("#mailToText").textContent = to.join("、");
+  $("#mailDlg").showModal();
+};
+$("#closeMail").onclick = () => $("#mailDlg").close();
+$("#sendFetched").onclick = () => sendMail(report.xlsx);
+$("#sendEdited").onclick = () => $("#editedFile").click();
+$("#editedFile").onchange = async (e) => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  if (!confirm(`「${f.name}」を「${report.name}」として送信しますか？`)) return;
+  sendMail(new Uint8Array(await f.arrayBuffer()));
 };
 
 // ── 終了：送信データ・処理記録を全削除（他端末の処理中ジョブは残す）して、画面上のデータを破棄 ──
@@ -406,7 +376,7 @@ $("#quitApp").onclick = async () => {
     }
   } catch (e) { msg = "データの削除に失敗しました（" + e.message + "）。"; }
   b.disabled = false; b.textContent = "終了";
-  data = null; saved = false; $("#editArea").classList.add("hidden");
+  report = null;
   $("#quitMsg").textContent = msg; $("#quitScreen").classList.remove("hidden");
   try { window.close(); } catch {}
 };
