@@ -45,6 +45,9 @@
   input[type=text], input[type=password], input[type=email], input[type=date] { padding: 10px; font-size: 1rem; font-family: inherit;
     border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
   input[type=date] { cursor: pointer; }
+  .report-btns { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; }
+  .report-btns #viewBtn { justify-self: start; }
+  .report-btns #clearBtn { justify-self: end; }
   .wide { width: 100%; }
   .muted { color: var(--sub); font-size: .9rem; }
   .warn { color: var(--warn); }
@@ -90,7 +93,7 @@
 </head>
 <body>
 <header><div class="in">
-  <h1>作業日報 <small>Ver 11/02-f</small></h1>
+  <h1>作業日報 <small>Ver 11/02-g</small></h1>
   <div class="row" style="flex-wrap:nowrap;gap:8px">
     <button class="icon-btn" id="openSettings" aria-label="設定">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -128,9 +131,9 @@
   </section>
   <section class="card">
     <h2>2. 日報の表示・メール送信</h2>
-    <div class="row">
+    <div class="report-btns">
       <button id="viewBtn" class="primary" disabled>日報を表示</button>
-      <button id="mailBtn" class="green" style="margin-left:auto" disabled>メール送信</button>
+      <button id="mailBtn" class="green" disabled>メール送信</button>
       <button id="clearBtn" class="quit" disabled>データクリア</button>
     </div>
     <p class="muted" id="status" style="margin:8px 0 0">日報を作成すると押せるようになります。</p>
@@ -190,16 +193,16 @@ const WORKFLOW = "nippo.yml";
 const DEFAULT_REPO = "markone-1/cocona-report2";
 const $ = (s) => document.querySelector(s);
 // 確認・お知らせはアプリ内の画面で出す（アプリ内ブラウザ等では confirm が出ずに自動でキャンセルになるため）
-function ask(msg, one) {
+function ask(msg, yes = "OK", one = false) {
   return new Promise((resolve) => {
     const d = $("#askDlg"), done = (v) => { d.close(); resolve(v); };
-    $("#askMsg").textContent = msg; $("#askNo").classList.toggle("hidden", !!one);
+    $("#askMsg").textContent = msg; $("#askYes").textContent = yes; $("#askNo").classList.toggle("hidden", one);
     $("#askYes").onclick = () => done(true); $("#askNo").onclick = () => done(false);
     d.oncancel = (e) => { e.preventDefault(); done(false); };
     d.showModal();
   });
 }
-const note = (msg) => ask(msg, true);
+const note = (msg) => ask(msg, "OK", true);
 
 // ── 設定（同じサイトの作業日報OCRと混ざらないよう nippo_ を付けて保存。トークンは旧アプリの設定があれば引き継ぐ） ──
 const mem = {};
@@ -276,9 +279,9 @@ function unb64(s) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const prog = {
   t0: 0, timer: null,
-  open(title) {
+  open(title, label) {
     this.t0 = Date.now(); $("#progTitle").textContent = title; $("#bar").className = "bar"; $("#errMsg").classList.add("hidden");
-    $("#closeProg").disabled = true; $("#closeProg").textContent = "処理中…"; this.set(3, "準備中…");
+    $("#closeProg").disabled = true; $("#closeProg").textContent = label; this.set(3, "準備中…");
     this.timer = setInterval(() => $("#elapsed").textContent = `${Math.round((Date.now() - this.t0) / 1000)}秒`, 1000);
     $("#progDlg").showModal();
   },
@@ -354,8 +357,8 @@ function reportLabel() {
   const d = report.data, y = d.date.replace(/-/g, "");
   return `作業日報_${y}（清掃 ${d.seisou.length}件・点検 ${d.tenken.length}件）`;
 }
-async function act(title, fn) {
-  busy = true; updateUI(); prog.open(title);
+async function act(title, fn, label = "処理中…") {
+  busy = true; updateUI(); prog.open(title, label);
   try {
     const r = await fn();
     if (typeof r === "string") prog.finish(true, r); else prog.finish(true, r.msg, r.next, r.after);
@@ -372,7 +375,7 @@ $("#fetchBtn").onclick = async () => {
     report = { data: r.data, edited: false }; saveDraft();
     $("#status").textContent = reportLabel();
     return { msg: `作成しました：${reportLabel()}`, next: "日報を表示", after: openView };
-  });
+  }, "作成中");
 };
 
 // 日報の表示・編集：Excel と同じ並びの紙面をアプリ内に表示する（列の定義は build_nippo.py と合わせる）
@@ -524,7 +527,7 @@ function resetReport() {
   $("#status").textContent = "日報を作成すると押せるようになります。";
   updateUI();
 }
-$("#clearBtn").onclick = async () => { if (await ask("日報のデータを削除して、初期状態に戻しますか？")) resetReport(); };
+$("#clearBtn").onclick = async () => { if (await ask("日報のデータを削除しますか？", "データ削除")) resetReport(); };
 
 // ── 終了：送信データ・処理記録を全削除（他端末の処理中ジョブは残す）して、画面上のデータを破棄 ──
 $("#quitApp").onclick = async () => {
