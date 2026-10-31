@@ -93,7 +93,7 @@
 </head>
 <body>
 <header><div class="in">
-  <h1>作業日報 <small>Ver 11/02-g</small></h1>
+  <h1>作業日報 <small>Ver 11/02-h</small></h1>
   <div class="row" style="flex-wrap:nowrap;gap:8px">
     <button class="icon-btn" id="openSettings" aria-label="設定">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -136,7 +136,7 @@
       <button id="mailBtn" class="green" disabled>メール送信</button>
       <button id="clearBtn" class="quit" disabled>データクリア</button>
     </div>
-    <p class="muted" id="status" style="margin:8px 0 0">日報を作成すると押せるようになります。</p>
+    <p class="muted" id="status" style="margin:8px 0 0"></p>
   </section>
 </main>
 
@@ -278,16 +278,18 @@ function unb64(s) {
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const prog = {
-  t0: 0, timer: null,
-  open(title, label) {
+  t0: 0, timer: null, stoppable: false,
+  open(title, stoppable) {
     this.t0 = Date.now(); $("#progTitle").textContent = title; $("#bar").className = "bar"; $("#errMsg").classList.add("hidden");
-    $("#closeProg").disabled = true; $("#closeProg").textContent = label; this.set(3, "準備中…");
+    this.stoppable = stoppable; $("#closeProg").disabled = !stoppable; $("#closeProg").textContent = stoppable ? "キャンセル" : "処理中…"; this.set(3, "準備中…");
     this.timer = setInterval(() => $("#elapsed").textContent = `${Math.round((Date.now() - this.t0) / 1000)}秒`, 1000);
     $("#progDlg").showModal();
   },
   set(p, stage) { $("#barFill").style.width = Math.min(100, p) + "%"; if (stage) $("#stage").textContent = stage; },
+  noStop() { this.stoppable = false; $("#closeProg").disabled = true; },
+  abort() { clearInterval(this.timer); this.stoppable = false; $("#progDlg").close(); },
   finish(ok, msg, nextLabel, nextFn) {
-    clearInterval(this.timer);
+    clearInterval(this.timer); this.stoppable = false;
     progNext = nextFn || null;
     if (ok) { this.set(100, msg); $("#bar").className = "bar ok"; }
     else { $("#bar").className = "bar err"; $("#stage").textContent = "エラーで中断しました"; $("#errMsg").textContent = msg; $("#errMsg").classList.remove("hidden"); }
@@ -295,9 +297,28 @@ const prog = {
   },
 };
 let progNext = null;
-$("#closeProg").onclick = () => { $("#progDlg").close(); if (progNext) { const f = progNext; progNext = null; f(); } };
+$("#closeProg").onclick = () => {
+  if (prog.stoppable) { // 実行中ならキャンセルを受け付ける
+    cancelJob = true; prog.noStop();
+    $("#closeProg").textContent = "キャンセル中…"; $("#stage").textContent = "キャンセル中…";
+    return;
+  }
+  $("#progDlg").close(); if (progNext) { const f = progNext; progNext = null; f(); }
+};
 $("#progDlg").addEventListener("cancel", (e) => { if (busy) e.preventDefault(); });
 
+const CANCELLED = new Error("キャンセルしました");
+let cancelJob = false;
+// 実行中の処理を止める。止まるのを待って処理記録も消す（COCONA は処理側の finally でログアウトする）
+async function stopRun(branch) {
+  let asked = false;
+  for (let i = 0; i < 20; i++) {
+    const run = (await gh(`/actions/workflows/${WORKFLOW}/runs?branch=${encodeURIComponent(branch)}&per_page=5`)).workflow_runs[0];
+    if (run?.status === "completed") return gh(`/actions/runs/${run.id}`, { method: "DELETE", allow404: true });
+    if (run && !asked) { asked = true; try { await gh(`/actions/runs/${run.id}/cancel`, { method: "POST" }); } catch {} }
+    await sleep(2000);
+  }
+}
 // 一時ブランチに依頼を置いて処理を起動し、結果を受け取って、送信データと処理記録を消す
 async function runJob(request, stageText) {
   const n = new Date(), p2 = (x) => String(x).padStart(2, "0");
@@ -314,10 +335,12 @@ async function runJob(request, stageText) {
     const c = await gh("/git/commits", { method: "POST", body: { message: `job ${jobId}`, tree: t.sha, parents: [main.object.sha] } });
     await gh("/git/refs", { method: "POST", body: { ref: `refs/heads/${branch}`, sha: c.sha } });
     sent = true;
+    if (cancelJob) throw CANCELLED;
     await gh(`/actions/workflows/${WORKFLOW}/dispatches`, { method: "POST", body: { ref: branch, inputs: { job_id: jobId } } });
     const r0 = Date.now(); let run = null;
     while (true) {
       await sleep(3000);
+      if (cancelJob) throw CANCELLED;
       const sec = (Date.now() - r0) / 1000;
       if (sec > 300) throw new Error("時間切れ（5分）");
       prog.set(15 + 70 * (1 - Math.exp(-sec / 20)), stageText);
@@ -327,6 +350,8 @@ async function runJob(request, stageText) {
       runId = run.id;
       if (run.status === "completed") break;
     }
+    if (cancelJob) throw CANCELLED;
+    prog.noStop();
     if (run.conclusion !== "success") throw new Error(`処理に失敗しました（${run.conclusion}）。\nしばらくしてからもう一度お試しください。続く場合は管理者に連絡してください。`);
     prog.set(90, "結果を受信中…");
     const ref = await gh(`/git/ref/heads/${branch}`);
@@ -342,6 +367,7 @@ async function runJob(request, stageText) {
     await gh(`/git/refs/heads/${branch}`, { method: "DELETE", allow404: true });
     return out;
   } catch (e) {
+    if (sent && e === CANCELLED) { try { await stopRun(branch); } catch {} }
     if (sent) { try { await gh(`/git/refs/heads/${branch}`, { method: "DELETE", allow404: true }); } catch {} }
     throw e;
   } finally {
@@ -357,12 +383,12 @@ function reportLabel() {
   const d = report.data, y = d.date.replace(/-/g, "");
   return `作業日報_${y}（清掃 ${d.seisou.length}件・点検 ${d.tenken.length}件）`;
 }
-async function act(title, fn, label = "処理中…") {
-  busy = true; updateUI(); prog.open(title, label);
+async function act(title, fn, stoppable = false) {
+  busy = true; cancelJob = false; updateUI(); prog.open(title, stoppable);
   try {
     const r = await fn();
     if (typeof r === "string") prog.finish(true, r); else prog.finish(true, r.msg, r.next, r.after);
-  } catch (e) { prog.finish(false, e.message); }
+  } catch (e) { if (e === CANCELLED) prog.abort(); else prog.finish(false, e.message); }
   finally { busy = false; updateUI(); }
 }
 $("#fetchBtn").onclick = async () => {
@@ -370,12 +396,12 @@ $("#fetchBtn").onclick = async () => {
   if (!d) return note("作業日を選んでください");
   if (report?.edited && !(await ask("編集した日報は破棄されます。作成し直しますか？"))) return;
   act("日報作成", async () => {
-    const r = await runJob({ mode: "fetch", date: d }, "日報作成中");
+    const r = await runJob({ mode: "fetch", date: d }, `${d.replace(/-/g, "/")} の日報作成中`);
     if (r.res.error) throw new Error(r.res.error);
     report = { data: r.data, edited: false }; saveDraft();
     $("#status").textContent = reportLabel();
     return { msg: `作成しました：${reportLabel()}`, next: "日報を表示", after: openView };
-  }, "作成中");
+  }, true);
 };
 
 // 日報の表示・編集：Excel と同じ並びの紙面をアプリ内に表示する（列の定義は build_nippo.py と合わせる）
@@ -524,7 +550,7 @@ $("#sendNow").onclick = () => {
 function resetReport() {
   report = null; saveDraft();
   $("#workDate").value = today;
-  $("#status").textContent = "日報を作成すると押せるようになります。";
+  $("#status").textContent = "";
   updateUI();
 }
 $("#clearBtn").onclick = async () => { if (await ask("日報のデータを削除しますか？", "データ削除")) resetReport(); };
