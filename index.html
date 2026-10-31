@@ -90,7 +90,7 @@
 </head>
 <body>
 <header><div class="in">
-  <h1>作業日報 <small>Ver 11/02-d</small></h1>
+  <h1>作業日報 <small>Ver 11/02-e</small></h1>
   <div class="row" style="flex-wrap:nowrap;gap:8px">
     <button class="icon-btn" id="openSettings" aria-label="設定">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -187,10 +187,13 @@ const $ = (s) => document.querySelector(s);
 
 // ── 設定（同じサイトの作業日報OCRと混ざらないよう nippo_ を付けて保存。トークンは旧アプリの設定があれば引き継ぐ） ──
 const mem = {};
+let storageOk = true;
 const store = {
   get(k) { try { const v = localStorage.getItem(k); if (v !== null) return v; } catch {} return mem[k] || ""; },
-  set(k, v) { mem[k] = v; try { localStorage.setItem(k, v); } catch {} },
+  set(k, v) { mem[k] = v; try { localStorage.setItem(k, v); } catch { storageOk = false; } },
 };
+// ブラウザが容量整理で設定を消さないよう、保存データの保持を依頼する
+navigator.storage?.persist?.().catch(() => {});
 function cfg() { return { repo: store.get("nippo_repo") || DEFAULT_REPO, token: store.get("nippo_token") || store.get("token") }; }
 function mailTo() { try { return JSON.parse(store.get("nippo_mailTo") || "[]"); } catch { return []; } }
 function updateUI() {
@@ -218,6 +221,7 @@ $("#saveCfg").onclick = () => {
   if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return alert("処理用リポジトリは「ユーザー名/リポジトリ名」の形で入力してください");
   if (!token) return alert("GitHub アクセストークンを入力してください");
   store.set("nippo_repo", repo); store.set("nippo_token", token);
+  if (!storageOk) alert("このブラウザでは設定を保存できません。シークレットモードを使っていないか確認してください。");
   $("#settingsDlg").close(); updateUI();
 };
 $("#mailAdd").onclick = () => {
