@@ -66,7 +66,7 @@
 </head>
 <body>
 <header><div class="in">
-  <h1>作業日報 <small>Ver 10/31-b</small></h1>
+  <h1>作業日報 <small>Ver 10/31-c</small></h1>
   <div class="row" style="flex-wrap:nowrap;gap:8px">
     <button class="icon-btn" id="openSettings" aria-label="設定">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -84,20 +84,20 @@
 
 <main>
   <section class="card">
-    <h2>1. COCONAから作業データを取得</h2>
+    <h2>1. 日報作成</h2>
     <div class="row">
       <input type="date" id="workDate" aria-label="作業日">
-      <button id="fetchBtn" class="primary">COCONAから取得</button>
+      <button id="fetchBtn" class="primary">日報作成</button>
     </div>
     <p class="warn" id="why" style="margin:8px 0 0"></p>
   </section>
   <section class="card">
-    <h2>2. 日報の確認・メール送信</h2>
+    <h2>2. 日報の表示・メール送信</h2>
     <div class="row">
       <button id="viewBtn" class="primary" disabled>日報を表示</button>
       <button id="mailBtn" class="green" style="margin-left:auto" disabled>メール送信</button>
     </div>
-    <p class="muted" id="status" style="margin:8px 0 0">作業データを取得すると押せるようになります。</p>
+    <p class="muted" id="status" style="margin:8px 0 0">日報を作成すると押せるようになります。</p>
   </section>
 </main>
 
@@ -233,14 +233,16 @@ const prog = {
     $("#progDlg").showModal();
   },
   set(p, stage) { $("#barFill").style.width = Math.min(100, p) + "%"; if (stage) $("#stage").textContent = stage; },
-  finish(ok, msg) {
+  finish(ok, msg, nextLabel, nextFn) {
     clearInterval(this.timer);
+    progNext = nextFn || null;
     if (ok) { this.set(100, msg); $("#bar").className = "bar ok"; }
     else { $("#bar").className = "bar err"; $("#stage").textContent = "エラーで中断しました"; $("#errMsg").textContent = msg; $("#errMsg").classList.remove("hidden"); }
-    $("#closeProg").disabled = false; $("#closeProg").textContent = "閉じる";
+    $("#closeProg").disabled = false; $("#closeProg").textContent = nextLabel || "閉じる";
   },
 };
-$("#closeProg").onclick = () => $("#progDlg").close();
+let progNext = null;
+$("#closeProg").onclick = () => { $("#progDlg").close(); if (progNext) { const f = progNext; progNext = null; f(); } };
 $("#progDlg").addEventListener("cancel", (e) => { if (busy) e.preventDefault(); });
 
 // 一時ブランチに依頼を置いて処理を起動し、結果を受け取って、送信データと処理記録を消す
@@ -308,31 +310,35 @@ function download(name, u8) {
 let report = null, busy = false; // report = {name, xlsx}
 async function act(title, fn) {
   busy = true; updateUI(); prog.open(title);
-  try { prog.finish(true, await fn()); }
-  catch (e) { prog.finish(false, e.message); }
+  try {
+    const r = await fn();
+    if (typeof r === "string") prog.finish(true, r); else prog.finish(true, r.msg, r.next, r.then);
+  } catch (e) { prog.finish(false, e.message); }
   finally { busy = false; updateUI(); }
 }
 $("#fetchBtn").onclick = () => {
   const d = $("#workDate").value;
   if (!d) return alert("作業日を選んでください");
-  act("COCONAから取得", async () => {
+  act("日報作成", async () => {
     report = null;
-    const r = await runJob({ mode: "fetch", date: d }, "COCONAから作業データを取得中…");
+    const r = await runJob({ mode: "fetch", date: d }, "日報を作成中…");
     if (r.res.error) throw new Error(r.res.error);
     report = { name: r.res.excel, xlsx: r.xlsx };
     const m = `${r.res.excel}（清掃 ${r.res.seisou}件・点検 ${r.res.tenken}件）`;
     $("#status").textContent = m;
-    return `取得しました：${m}`;
+    return { msg: `作成しました：${m}`, next: "日報を表示", then: showReport };
   });
 };
-// 日報を表示：タブレットでは共有メニューから Excel 等のアプリを選んで開く。対応しない環境では保存する
-$("#viewBtn").onclick = async () => {
+// 日報を表示：Web の共有機能が Excel を扱える環境ならアプリへ直接渡す。
+// Chrome は .xlsx を共有できないので、その場合はダウンロードし、Chrome の「開く」から Excel 等で開く
+async function showReport() {
   const file = new File([report.xlsx], report.name, { type: XLSX_TYPE });
   try {
     if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: report.name }); return; }
   } catch (e) { if (e.name === "AbortError") return; }
   download(report.name, report.xlsx);
-};
+}
+$("#viewBtn").onclick = showReport;
 function sendMail(u8) {
   const to = mailTo();
   $("#mailDlg").close();
