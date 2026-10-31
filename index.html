@@ -66,7 +66,7 @@
   .view-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 16px; background: var(--card); border-bottom: 1px solid var(--line); }
   .view-head h2 { font-size: 1.05rem; margin: 0; }
   .view-body { flex: 1; overflow: auto; padding: 12px; }
-  .paper { width: 1130px; margin: 0 auto 16px; padding: 16px; background: #fff; color: #000; color-scheme: light; border: 1px solid var(--line); }
+  .paper { width: 1210px; margin: 0 auto 16px; padding: 16px; background: #fff; color: #000; color-scheme: light; border: 1px solid var(--line); }
   .paper h3 { margin: 0; text-align: center; color: #0070c0; font-size: 1.4rem; letter-spacing: .1em; }
   .paper .meta { display: flex; justify-content: space-between; gap: 16px; margin: 6px 0 10px; font-size: .9rem; }
   .paper table { border-collapse: collapse; width: 100%; table-layout: fixed; border: 2px solid #0070c0; }
@@ -89,7 +89,7 @@
 </head>
 <body>
 <header><div class="in">
-  <h1>作業日報 <small>Ver 11/02-a</small></h1>
+  <h1>作業日報 <small>Ver 11/02-b</small></h1>
   <div class="row" style="flex-wrap:nowrap;gap:8px">
     <button class="icon-btn" id="openSettings" aria-label="設定">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -370,6 +370,7 @@ const VIEW_COLS = {
 let edit = null, viewDirty = false;
 const toNum = (v) => { const n = parseFloat(String(v ?? "").replace(/[,¥円\s]/g, "")); return isNaN(n) ? 0 : n; };
 const fmt = (n) => n ? n.toLocaleString("ja-JP") : "";
+const showVal = (key, v) => SUM_KEYS.includes(key) && v !== "" && !isNaN(Number(v)) ? fmt(Number(v)) : (v ?? "");
 function wareki(ds) { const [y, m, d] = ds.split("-").map(Number); return `令和${y - 2018}年${m}月${d}日`; }
 function peopleLabel(rows, label) {
   const groups = new Map();
@@ -399,12 +400,12 @@ function makeCell(kind, row, tr, [key, , , f]) {
   const inp = el(f.includes("t") ? "textarea" : "input");
   if (f.includes("t")) inp.rows = 2;
   if (f.includes("n")) inp.inputMode = "decimal";
-  inp.value = row[key] ?? ""; inp.dataset.key = key; inp.setAttribute("aria-label", key);
+  inp.value = showVal(key, row[key]); inp.dataset.key = key; inp.setAttribute("aria-label", key);
   inp.oninput = () => {
     row[key] = inp.value; viewDirty = true;
     if (PARTS.includes(key)) { // 売上額は内訳の合計に自動更新
       const t = PARTS.reduce((v, k) => v + toNum(row[k]), 0);
-      row.uriage = t || ""; tr.querySelector('[data-key="uriage"]').value = row.uriage;
+      row.uriage = t || ""; tr.querySelector('[data-key="uriage"]').value = showVal("uriage", row.uriage);
     }
     refreshSums(kind);
   };
