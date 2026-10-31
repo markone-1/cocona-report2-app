@@ -62,13 +62,34 @@
   .bar.err > div { background: var(--err); } .bar.ok > div { background: var(--ok); }
   #stage { font-weight: 600; margin: 0; }
   #errMsg { color: var(--err); margin: 10px 0 0; white-space: pre-wrap; }
+  .view-screen { position: fixed; inset: 0; z-index: 20; background: var(--bg); display: flex; flex-direction: column; }
+  .view-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 16px; background: var(--card); border-bottom: 1px solid var(--line); }
+  .view-head h2 { font-size: 1.05rem; margin: 0; }
+  .view-body { flex: 1; overflow: auto; padding: 12px; }
+  .paper { width: 1130px; margin: 0 auto 16px; padding: 16px; background: #fff; color: #000; color-scheme: light; border: 1px solid var(--line); }
+  .paper h3 { margin: 0; text-align: center; color: #0070c0; font-size: 1.4rem; letter-spacing: .1em; }
+  .paper .meta { display: flex; justify-content: space-between; gap: 16px; margin: 6px 0 10px; font-size: .9rem; }
+  .paper table { border-collapse: collapse; width: 100%; table-layout: fixed; border: 2px solid #0070c0; }
+  .paper th { background: #ddebf7; color: #0070c0; font-size: .78rem; padding: 4px 2px; border: 1px solid #7f9db9; line-height: 1.25; }
+  .paper td { border: 1px solid #7f9db9; padding: 0; font-size: .85rem; vertical-align: middle; }
+  .paper td input, .paper td textarea { width: 100%; border: 0; background: transparent; color: #000; font: inherit; padding: 5px 3px; display: block; resize: none; }
+  .paper td input:focus, .paper td textarea:focus { outline: 2px solid #0b63c5; outline-offset: -2px; background: #fffbe6; }
+  .paper td.n input { text-align: right; }
+  .paper td.c input { text-align: center; }
+  .paper td.b input { font-weight: 700; }
+  .paper td.no { text-align: center; }
+  .paper tr.sub td { background: #f2f2f2; font-weight: 700; padding: 5px 3px; text-align: right; }
+  .paper tr.total td { background: #d9d9d9; font-weight: 700; padding: 6px 3px; text-align: right; font-size: .95rem; border-top: 2px solid #0070c0; }
+  .paper .del { padding: 2px 8px; border-width: 1px; font-size: .85rem; background: #fff; color: #000; border-color: #8f99a5; }
+  .paper .foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: .8rem; }
+  .paper .add { padding: 6px 12px; font-size: .9rem; border-width: 1px; background: #fff; color: #0b63c5; border-color: #0b63c5; }
   .quit-screen { position: fixed; inset: 0; z-index: 50; background: var(--bg); display: grid; place-items: center; text-align: center; padding: 24px; }
   .quit-title { font-size: 1.4rem; font-weight: 700; margin: 0 0 8px; }
 </style>
 </head>
 <body>
 <header><div class="in">
-  <h1>作業日報 <small>Ver 11/01-b</small></h1>
+  <h1>作業日報 <small>Ver 11/02-a</small></h1>
   <div class="row" style="flex-wrap:nowrap;gap:8px">
     <button class="icon-btn" id="openSettings" aria-label="設定">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -83,6 +104,17 @@
   <p class="muted">この画面を閉じてください。</p>
   <button id="restart" class="primary">もう一度使う</button>
 </div></div>
+
+<div id="viewScreen" class="view-screen hidden">
+  <div class="view-head">
+    <h2 id="viewTitle">作業日報</h2>
+    <div class="row" style="flex-wrap:nowrap;gap:8px">
+      <button id="viewCancel">キャンセル</button>
+      <button id="viewSave" class="primary">保存</button>
+    </div>
+  </div>
+  <div class="view-body" id="viewBody"></div>
+</div>
 
 <main>
   <section class="card">
@@ -124,13 +156,12 @@
 <dialog id="mailDlg">
   <div class="dlg-head"><h2>メール送信</h2><button class="icon-btn" id="closeMail" aria-label="閉じる">✕</button></div>
   <div class="dlg-body">
+    <p style="margin:0 0 10px">表示中の日報を Excel ファイルにして送信します。</p>
     <p class="muted" style="margin:0 0 4px">送信先</p>
     <p id="mailToText" style="margin:0 0 14px;word-break:break-all"></p>
     <div class="row">
-      <button id="sendFetched" class="green">作成したまま送信</button>
-      <button id="sendEdited" class="primary">編集したファイルを選んで送信</button>
+      <button id="sendNow" class="green">送信</button>
     </div>
-    <input type="file" id="editedFile" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden">
   </div>
 </dialog>
 
@@ -150,7 +181,6 @@
 const API = "https://api.github.com";
 const WORKFLOW = "nippo.yml";
 const DEFAULT_REPO = "markone-1/cocona-report2";
-const XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const $ = (s) => document.querySelector(s);
 
 // ── 設定（同じサイトの作業日報OCRと混ざらないよう nippo_ を付けて保存。トークンは旧アプリの設定があれば引き継ぐ） ──
@@ -215,11 +245,6 @@ function gh(path, opt = {}) {
     x.send(body);
   });
 }
-function b64(u8) {
-  let s = ""; const n = 0x8000;
-  for (let i = 0; i < u8.length; i += n) s += String.fromCharCode.apply(null, u8.subarray(i, i + n));
-  return btoa(s);
-}
 function unb64(s) {
   const bin = atob(s.replace(/\s/g, "")), u8 = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
@@ -248,7 +273,7 @@ $("#closeProg").onclick = () => { $("#progDlg").close(); if (progNext) { const f
 $("#progDlg").addEventListener("cancel", (e) => { if (busy) e.preventDefault(); });
 
 // 一時ブランチに依頼を置いて処理を起動し、結果を受け取って、送信データと処理記録を消す
-async function runJob(request, stageText, upload) {
+async function runJob(request, stageText) {
   const n = new Date(), p2 = (x) => String(x).padStart(2, "0");
   const jobId = `${n.getFullYear()}${p2(n.getMonth() + 1)}${p2(n.getDate())}${p2(n.getHours())}${p2(n.getMinutes())}${p2(n.getSeconds())}-` + Math.random().toString(36).slice(2, 6).padEnd(4, "0");
   const branch = `job/${jobId}`;
@@ -259,10 +284,6 @@ async function runJob(request, stageText, upload) {
     const main = await gh("/git/ref/heads/main");
     const base = await gh(`/git/commits/${main.object.sha}`);
     const tree = [{ path: "in/request.json", mode: "100644", type: "blob", content: JSON.stringify(request) }];
-    if (upload) {
-      const blob = await gh("/git/blobs", { method: "POST", body: { content: b64(upload), encoding: "base64" } });
-      tree.push({ path: "in/upload.xlsx", mode: "100644", type: "blob", sha: blob.sha });
-    }
     const t = await gh("/git/trees", { method: "POST", body: { base_tree: base.tree.sha, tree } });
     const c = await gh("/git/commits", { method: "POST", body: { message: `job ${jobId}`, tree: t.sha, parents: [main.object.sha] } });
     await gh("/git/refs", { method: "POST", body: { ref: `refs/heads/${branch}`, sha: c.sha } });
@@ -289,8 +310,7 @@ async function runJob(request, stageText, upload) {
     const json = async (name) => JSON.parse(new TextDecoder().decode(await get(files.find((x) => x.path === name).sha)));
     const res = await json("out/result.json");
     const out = { res };
-    const xf = files.find((x) => x.path.endsWith(".xlsx"));
-    if (xf) out.xlsx = await get(xf.sha);
+    if (files.some((x) => x.path === "out/data.json")) out.data = await json("out/data.json");
     prog.set(97, "送信データを削除中…");
     await gh(`/actions/runs/${runId}`, { method: "DELETE", allow404: true });
     await gh(`/git/refs/heads/${branch}`, { method: "DELETE", allow404: true });
@@ -302,14 +322,15 @@ async function runJob(request, stageText, upload) {
     try { await wake?.release(); } catch {}
   }
 }
-function download(name, u8) {
-  const url = URL.createObjectURL(new Blob([u8], { type: XLSX_TYPE }));
-  const a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click();
-  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 2000);
-}
 
 // ── 取得・表示・メール送信 ──
-let report = null, busy = false; // report = {name, xlsx}
+const DRAFT = "nippo_draft";
+let report = null, busy = false; // report = {data, edited} 編集内容はこのタブレットにだけ保存し、終了で消す
+function saveDraft() { store.set(DRAFT, report ? JSON.stringify(report) : ""); }
+function reportLabel() {
+  const d = report.data, y = d.date.replace(/-/g, "");
+  return `作業日報_${y}（清掃 ${d.seisou.length}件・点検 ${d.tenken.length}件）`;
+}
 async function act(title, fn) {
   busy = true; updateUI(); prog.open(title);
   try {
@@ -321,31 +342,140 @@ async function act(title, fn) {
 $("#fetchBtn").onclick = () => {
   const d = $("#workDate").value;
   if (!d) return alert("作業日を選んでください");
+  if (report?.edited && !confirm("編集した日報は破棄されます。作成し直しますか？")) return;
   act("日報作成", async () => {
-    report = null;
     const r = await runJob({ mode: "fetch", date: d }, "日報を作成中…");
     if (r.res.error) throw new Error(r.res.error);
-    report = { name: r.res.excel, xlsx: r.xlsx };
-    const m = `${r.res.excel}（清掃 ${r.res.seisou}件・点検 ${r.res.tenken}件）`;
-    $("#status").textContent = m;
-    return { msg: `作成しました：${m}`, next: "日報を表示", after: showReport };
+    report = { data: r.data, edited: false }; saveDraft();
+    $("#status").textContent = reportLabel();
+    return { msg: `作成しました：${reportLabel()}`, next: "日報を表示", after: openView };
   });
 };
-// 日報を表示：タブレットに保存し、Chrome の「開く」やファイルアプリから Excel 等で開く
-function showReport() {
-  download(report.name, report.xlsx);
-  $("#status").textContent = `タブレットに保存しました：${report.name}`;
-}
-$("#viewBtn").onclick = showReport;
-function sendMail(u8) {
-  const to = mailTo();
-  $("#mailDlg").close();
-  act("メール送信", async () => {
-    const r = await runJob({ mode: "mail", excel: report.name, mail_to: to }, "メールを送信中…", u8);
-    if (r.res.error) throw new Error(r.res.error);
-    return `メールを送信しました（${r.res.mail_sent}件）`;
+
+// 日報の表示・編集：Excel と同じ並びの紙面をアプリ内に表示する（列の定義は build_nippo.py と合わせる）
+const AREAS = ["下田", "南伊豆", "河津", "東伊豆", "松崎", "西伊豆"];
+const SUM_KEYS = ["main", "touyaku", "plate", "sonota", "uriage", "genkin"];
+const PARTS = ["main", "touyaku", "plate", "sonota"];
+// [キー, 見出し, 幅px, 書式] n=数値 c=中央 t=折り返し b=太字
+const VIEW_COLS = {
+  seisou: [["area", "地区", 62, "c"], ["customer_no", "顧客番号", 64, "c"], ["name", "得意先", 124, "t"], ["address", "設置場所", 160, "t"],
+    ["tantou", "担当", 54, "c"], ["persons", "人槽", 40, "n"], ["volume", "処理量(㎥)", 52, "n"], ["paren", "( )内記入値", 54, "n"],
+    ["main", "清掃", 66, "n"], ["touyaku", "投薬", 54, "n"], ["plate", "プレート", 54, "n"], ["sonota", "その他", 54, "n"],
+    ["uriage", "売上額", 68, "nb"], ["genkin", "現金入金", 62, "n"], ["bikou", "備考", 170, "t"]],
+  tenken: [["area", "地区", 62, "c"], ["customer_no", "顧客番号", 64, "c"], ["name", "得意先", 136, "t"], ["address", "設置場所", 200, "t"],
+    ["tantou", "点検者", 54, "c"], ["persons", "人槽", 40, "n"], ["main", "点検", 66, "n"], ["touyaku", "投薬", 54, "n"],
+    ["plate", "プレート", 54, "n"], ["sonota", "その他", 54, "n"], ["uriage", "売上額", 68, "nb"], ["genkin", "現金入金", 62, "n"],
+    ["bikou", "備考", 170, "t"]],
+};
+let edit = null, viewDirty = false;
+const toNum = (v) => { const n = parseFloat(String(v ?? "").replace(/[,¥円\s]/g, "")); return isNaN(n) ? 0 : n; };
+const fmt = (n) => n ? n.toLocaleString("ja-JP") : "";
+function wareki(ds) { const [y, m, d] = ds.split("-").map(Number); return `令和${y - 2018}年${m}月${d}日`; }
+function peopleLabel(rows, label) {
+  const groups = new Map();
+  rows.forEach((r) => {
+    const t = String(r.tantou ?? "").trim(); if (!t) return;
+    const a = r.area || ""; if (!groups.has(a)) groups.set(a, []);
+    if (!groups.get(a).includes(t)) groups.get(a).push(t);
   });
+  if (groups.size <= 1) return `${label}：` + [...groups.values()].flat().join("・");
+  return `${label}：` + [...groups].map(([a, l]) => `${l.join("・")}（${a}）`).join("／");
 }
+const el = (tag, cls, text) => { const x = document.createElement(tag); if (cls) x.className = cls; if (text !== undefined) x.textContent = text; return x; };
+function areaOrder(rows) {
+  const a = [...new Set(rows.map((r) => r.area || "地区なし"))];
+  return a.sort((p, q) => { const i = AREAS.indexOf(p), j = AREAS.indexOf(q); return (i < 0 ? 99 : i) - (j < 0 ? 99 : j) || p.localeCompare(q, "ja"); });
+}
+function refreshSums(kind) {
+  const rows = edit[kind], box = $(`#view_${kind}`);
+  box.querySelectorAll("[data-sum]").forEach((c) => {
+    const [area, key] = c.dataset.sum.split("|");
+    c.textContent = fmt(rows.filter((r) => !area || (r.area || "地区なし") === area).reduce((t, r) => t + toNum(r[key]), 0));
+  });
+  box.querySelector(".people").textContent = peopleLabel(rows, kind === "seisou" ? "記入者" : "点検者");
+}
+function makeCell(kind, row, tr, [key, , , f]) {
+  const td = el("td", f.includes("n") ? "n" : f.includes("c") ? "c" : ""); if (f.includes("b")) td.classList.add("b");
+  const inp = el(f.includes("t") ? "textarea" : "input");
+  if (f.includes("t")) inp.rows = 2;
+  if (f.includes("n")) inp.inputMode = "decimal";
+  inp.value = row[key] ?? ""; inp.dataset.key = key; inp.setAttribute("aria-label", key);
+  inp.oninput = () => {
+    row[key] = inp.value; viewDirty = true;
+    if (PARTS.includes(key)) { // 売上額は内訳の合計に自動更新
+      const t = PARTS.reduce((v, k) => v + toNum(row[k]), 0);
+      row.uriage = t || ""; tr.querySelector('[data-key="uriage"]').value = row.uriage;
+    }
+    refreshSums(kind);
+  };
+  if (key === "area") inp.onchange = () => renderView(); // 地区を変えたら小計の並びも作り直す
+  td.appendChild(inp);
+  return td;
+}
+function renderSection(kind, title) {
+  const cols = VIEW_COLS[kind], rows = edit[kind], box = el("section", "paper"); box.id = `view_${kind}`;
+  box.appendChild(el("h3", "", title));
+  const meta = el("div", "meta");
+  meta.append(el("span", "", `作業日：${wareki(edit.date)}`), el("span", "people"));
+  box.appendChild(meta);
+  const t = el("table"), cg = el("colgroup");
+  [...cols.map((c) => c[2]), 34].forEach((w) => { const c = el("col"); c.style.width = w + "px"; cg.appendChild(c); });
+  t.appendChild(cg);
+  const hr = t.insertRow(); cols.forEach((c) => hr.appendChild(el("th", "", c[1]))); hr.appendChild(el("th"));
+  const firstSum = cols.findIndex((c) => SUM_KEYS.includes(c[0]));
+  const sumRow = (cls, label, area) => {
+    const tr = t.insertRow(); tr.className = cls;
+    const c = tr.insertCell(); c.colSpan = firstSum; c.textContent = label;
+    cols.slice(firstSum).forEach(([key]) => { const x = tr.insertCell(); if (SUM_KEYS.includes(key)) x.dataset.sum = `${area}|${key}`; });
+    tr.insertCell();
+  };
+  areaOrder(rows).forEach((a) => {
+    const list = rows.filter((r) => (r.area || "地区なし") === a);
+    list.forEach((row) => {
+      const tr = t.insertRow();
+      cols.forEach((c) => tr.appendChild(makeCell(kind, row, tr, c)));
+      const td = tr.insertCell(); td.className = "no";
+      const del = el("button", "del", "×"); del.setAttribute("aria-label", "行を削除");
+      del.onclick = () => { if (confirm("この行を削除しますか？")) { rows.splice(rows.indexOf(row), 1); viewDirty = true; renderView(); } };
+      td.appendChild(del);
+    });
+    sumRow("sub", `${a} 小計（${list.length}件）`, a);
+  });
+  if (!rows.length) { const c = t.insertRow().insertCell(); c.colSpan = cols.length + 1; c.style.padding = "10px"; c.style.textAlign = "center"; c.textContent = "COCONAにこの作業日の登録はありません"; }
+  sumRow("total", `合　計（${rows.length}件）`, "");
+  box.appendChild(t);
+  const foot = el("div", "foot"), add = el("button", "add", "＋ 行を追加");
+  add.onclick = () => {
+    rows.push({ area: "", customer_no: "", name: "", address: "", tantou: "", persons: "", volume: "", paren: "", main: "", touyaku: "", plate: "", sonota: "", uriage: "", genkin: "", bikou: "" });
+    viewDirty = true; renderView();
+  };
+  foot.append(el("span", "", "※原本を事務員へ、コピーを業務員の控とする。"), add);
+  box.appendChild(foot);
+  return box;
+}
+function renderView() {
+  const b = $("#viewBody"), top = b.scrollTop, left = b.scrollLeft;
+  b.replaceChildren(renderSection("seisou", "清 掃 作 業 日 報（売上）"), renderSection("tenken", "点 検 作 業 日 報（売上）"));
+  refreshSums("seisou"); refreshSums("tenken");
+  b.scrollTop = top; b.scrollLeft = left;
+}
+function openView() {
+  edit = JSON.parse(JSON.stringify(report.data)); viewDirty = false;
+  $("#viewTitle").textContent = `作業日報 ${wareki(edit.date)}`;
+  renderView();
+  $("#viewScreen").classList.remove("hidden");
+  $("#viewBody").scrollTop = 0;
+}
+$("#viewBtn").onclick = openView;
+$("#viewSave").onclick = () => {
+  if (viewDirty) { report.data = edit; report.edited = true; saveDraft(); }
+  $("#status").textContent = reportLabel() + (report.edited ? "　編集を保存しました" : "");
+  $("#viewScreen").classList.add("hidden");
+};
+$("#viewCancel").onclick = () => {
+  if (viewDirty && !confirm("編集した内容を破棄しますか？")) return;
+  $("#viewScreen").classList.add("hidden");
+};
 $("#mailBtn").onclick = () => {
   const to = mailTo();
   if (!to.length) return alert("右上の歯車から送信先メールアドレスを登録してください");
@@ -353,19 +483,21 @@ $("#mailBtn").onclick = () => {
   $("#mailDlg").showModal();
 };
 $("#closeMail").onclick = () => $("#mailDlg").close();
-$("#sendFetched").onclick = () => sendMail(report.xlsx);
-$("#sendEdited").onclick = () => $("#editedFile").click();
-$("#editedFile").onchange = async (e) => {
-  const f = e.target.files[0]; e.target.value = "";
-  if (!f) return;
-  if (!confirm(`「${f.name}」を「${report.name}」として送信しますか？`)) return;
-  sendMail(new Uint8Array(await f.arrayBuffer()));
+$("#sendNow").onclick = () => {
+  const to = mailTo();
+  $("#mailDlg").close();
+  act("メール送信", async () => {
+    const r = await runJob({ mode: "mail", data: report.data, mail_to: to }, "メールを送信中…");
+    if (r.res.error) throw new Error(r.res.error);
+    report.edited = false; saveDraft();
+    return `メールを送信しました（${r.res.mail_sent}件）`;
+  });
 };
 
 // ── 終了：送信データ・処理記録を全削除（他端末の処理中ジョブは残す）して、画面上のデータを破棄 ──
 $("#quitApp").onclick = async () => {
   if (busy) return alert("処理中は終了できません。");
-  if (!confirm("アプリを終了しますか？\n画面のデータと、送信データ・処理の記録をすべて削除します。\nタブレットに保存した日報ファイルは残ります。")) return;
+  if (!confirm("アプリを終了しますか？\n画面のデータと、送信データ・処理の記録をすべて削除します。")) return;
   const b = $("#quitApp"); b.disabled = true; b.textContent = "削除中…";
   let msg = "";
   try {
@@ -380,7 +512,7 @@ $("#quitApp").onclick = async () => {
     }
   } catch (e) { msg = "データの削除に失敗しました（" + e.message + "）。"; }
   b.disabled = false; b.textContent = "終了";
-  report = null;
+  report = null; saveDraft();
   $("#quitMsg").textContent = msg; $("#quitScreen").classList.remove("hidden");
   try { window.close(); } catch {}
 };
@@ -390,6 +522,8 @@ const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toIS
 $("#workDate").value = today;
 // 欄のどこを押してもカレンダーを開く（PC の Chrome は既定だと右端のアイコンでしか開かない）
 $("#workDate").onclick = (e) => { try { e.currentTarget.showPicker(); } catch {} };
+try { report = JSON.parse(store.get(DRAFT) || "null"); } catch {}
+if (report) { $("#workDate").value = report.data.date; $("#status").textContent = reportLabel(); }
 updateUI();
 </script>
 </body>
