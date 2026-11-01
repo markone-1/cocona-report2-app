@@ -96,7 +96,7 @@
 </head>
 <body>
 <header><div class="in">
-  <h1>作業日報 <small>Ver 11/02-n</small></h1>
+  <h1>作業日報 <small>Ver 11/02-o</small></h1>
   <div class="row" style="flex-wrap:nowrap;gap:8px">
     <button class="icon-btn" id="openSettings" aria-label="設定">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -175,7 +175,7 @@
 
 <dialog id="askDlg">
   <div class="dlg-body"><p id="askMsg" style="margin:0;white-space:pre-wrap"></p></div>
-  <div class="dlg-foot"><button id="askNo">キャンセル</button><button id="askYes" class="primary">OK</button></div>
+  <div class="dlg-foot"><button id="askNo">キャンセル</button><button id="askMid" class="hidden">反映しないで保存</button><button id="askYes" class="primary">OK</button></div>
 </dialog>
 
 <dialog id="progDlg">
@@ -196,10 +196,11 @@ const WORKFLOW = "nippo.yml";
 const DEFAULT_REPO = "markone-1/cocona-report2";
 const $ = (s) => document.querySelector(s);
 // 確認・お知らせはアプリ内の画面で出す（アプリ内ブラウザ等では confirm が出ずに自動でキャンセルになるため）
-function ask(msg, yes = "OK", one = false) {
+function ask(msg, yes = "OK", one = false, mid = "") {
   return new Promise((resolve) => {
     const d = $("#askDlg"), done = (v) => { d.close(); resolve(v); };
     $("#askMsg").textContent = msg; $("#askYes").textContent = yes; $("#askNo").classList.toggle("hidden", one);
+    $("#askMid").textContent = mid; $("#askMid").classList.toggle("hidden", !mid); $("#askMid").onclick = () => done("mid");
     $("#askYes").onclick = () => done(true); $("#askNo").onclick = () => done(false);
     d.oncancel = (e) => { e.preventDefault(); done(false); };
     d.showModal();
@@ -542,10 +543,31 @@ function openView() {
   $("#viewBody").scrollTop = 0;
 }
 $("#viewBtn").onclick = openView;
-$("#viewSave").onclick = () => {
+function commitEdit() {
   if (viewDirty) { report.data = edit; report.edited = true; saveDraft(); }
   $("#status").textContent = reportLabel() + (report.edited ? "　編集を保存しました" : "");
   $("#viewScreen").classList.add("hidden");
+}
+// 反映の結果を文にする
+function reflectText(res) {
+  const lines = [];
+  if (res.reflected.length) lines.push(`反映しました（${res.reflected.length}件）`, ...res.reflected.map((x) => `・${x}`));
+  if (res.failed.length) lines.push("", `反映に失敗しました（${res.failed.length}件）`, ...res.failed.map((x) => `・${x.row}：${x.error}`));
+  if (res.skipped.length) lines.push("", "反映できなかった項目", ...res.skipped.flatMap((x) => [`・${x.row}`, ...x.items.map((t) => `　${t}`)]));
+  return lines.join("\n").trim() || "COCONAに反映する修正はありませんでした。";
+}
+$("#viewSave").onclick = async () => {
+  if (!viewDirty) return commitEdit();
+  const a = await ask("修正内容をCOCONAに反映して保存しますか？", "OK", false, "反映しないで保存");
+  if (a === false) return;
+  commitEdit();
+  if (a === "mid") return;
+  act("COCONAに反映", async () => {
+    const r = await runJob({ mode: "reflect", data: report.data }, "COCONAに反映中");
+    if (r.res.error) throw new Error(r.res.error);
+    report.data = r.data; saveDraft();
+    return { msg: `反映 ${r.res.reflected.length}件・失敗 ${r.res.failed.length}件`, next: "結果を見る", after: () => note(reflectText(r.res)) };
+  });
 };
 $("#viewCancel").onclick = async () => {
   if (viewDirty && !(await ask("編集した内容を破棄しますか？"))) return;
