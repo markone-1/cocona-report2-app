@@ -96,7 +96,7 @@
 </head>
 <body>
 <header><div class="in">
-  <h1>作業日報 <small>Ver 11/02-p</small></h1>
+  <h1>作業日報 <small>Ver 11/02-q</small></h1>
   <div class="row" style="flex-wrap:nowrap;gap:8px">
     <button class="icon-btn" id="openSettings" aria-label="設定">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -214,6 +214,7 @@ let storageOk = true;
 const store = {
   get(k) { try { const v = localStorage.getItem(k); if (v !== null) return v; } catch {} return mem[k] || ""; },
   set(k, v) { mem[k] = v; try { localStorage.setItem(k, v); } catch { storageOk = false; } },
+  del(k) { delete mem[k]; try { localStorage.removeItem(k); } catch {} },
 };
 // ブラウザが容量整理で設定を消さないよう、保存データの保持を依頼する
 navigator.storage?.persist?.().catch(() => {});
@@ -255,27 +256,21 @@ $("#mailAdd").onclick = () => {
 };
 
 // ── サーバー通信 ──
-function gh(path, opt = {}) {
-  const c = cfg(), body = opt.body ? JSON.stringify(opt.body) : null;
-  return new Promise((resolve, reject) => {
-    const x = new XMLHttpRequest();
-    // GitHub の応答はブラウザに最大60秒残るので、状態確認で古い内容を読まないよう毎回別の URL にする
-    const fresh = opt.method ? "" : (path.includes("?") ? "&" : "?") + "_=" + Date.now();
-    x.open(opt.method || "GET", API + `/repos/${c.repo}` + path + fresh);
-    x.timeout = 90000;
-    x.setRequestHeader("Authorization", "Bearer " + c.token);
-    x.setRequestHeader("Accept", "application/vnd.github+json");
-    x.setRequestHeader("X-GitHub-Api-Version", "2022-11-28");
-    if (body) x.setRequestHeader("Content-Type", "application/json");
-    x.onload = () => {
-      if (x.status >= 200 && x.status < 300) return resolve(x.status === 204 || !x.responseText ? null : JSON.parse(x.responseText));
-      if (opt.allow404 && x.status === 404) return resolve(null);
-      reject(new Error(`サーバーエラー ${x.status}: ${(x.responseText || "").slice(0, 160)}`));
-    };
-    x.ontimeout = () => reject(new Error("通信が応答しません（電波・Wi-Fiを確認）"));
-    x.onerror = () => reject(new Error("通信できません（電波・Wi-Fi・設定を確認）"));
-    x.send(body);
-  });
+// 応答に顧客データが入るので、Chrome のキャッシュに残さない（no-store）。状態確認で古い内容を読むこともない
+async function gh(path, opt = {}) {
+  const c = cfg(), ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 90000);
+  const headers = { Authorization: "Bearer " + c.token, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
+  if (opt.body) headers["Content-Type"] = "application/json";
+  let r, text;
+  try {
+    r = await fetch(API + `/repos/${c.repo}` + path, { method: opt.method || "GET", headers, body: opt.body ? JSON.stringify(opt.body) : undefined, cache: "no-store", signal: ctl.signal });
+    text = await r.text();
+  } catch (e) {
+    throw new Error(e.name === "AbortError" ? "通信が応答しません（電波・Wi-Fiを確認）" : "通信できません（電波・Wi-Fi・設定を確認）");
+  } finally { clearTimeout(timer); }
+  if (r.ok) return r.status === 204 || !text ? null : JSON.parse(text);
+  if (opt.allow404 && r.status === 404) return null;
+  throw new Error(`サーバーエラー ${r.status}: ${text.slice(0, 160)}`);
 }
 function unb64(s) {
   const bin = atob(s.replace(/\s/g, "")), u8 = new Uint8Array(bin.length);
@@ -392,7 +387,7 @@ async function runJob(request, stageText) {
 // ── 取得・表示・メール送信 ──
 const DRAFT = "nippo_draft";
 let report = null, busy = false; // report = {data, edited} 編集内容はこのタブレットにだけ保存し、終了で消す
-function saveDraft() { store.set(DRAFT, report ? JSON.stringify(report) : ""); }
+function saveDraft() { if (report) store.set(DRAFT, JSON.stringify(report)); else store.del(DRAFT); }
 function reportLabel() {
   const d = report.data, y = d.date.replace(/-/g, "");
   return `作業日報_${y}（清掃 ${d.seisou.length}件・点検 ${d.tenken.length}件）`;
@@ -599,10 +594,11 @@ function resetReport() {
 }
 $("#clearBtn").onclick = async () => { if (await ask("日報のデータを削除しますか？", "データ削除")) resetReport(); };
 
-// ── 終了：送信データ・処理記録を全削除（他端末の処理中ジョブは残す）して、画面上のデータを破棄 ──
+// ── 終了：Chrome 内の日報データと送信データ・処理記録を全削除（他端末の処理中ジョブは残す）。トークン・送信先は残す ──
 $("#quitApp").onclick = async () => {
-  if (busy) return note("処理中は終了できません。");
-  if (!(await ask("アプリを終了しますか？\n画面のデータと、送信データ・処理の記録をすべて削除します。"))) return;
+  if (busy) return;
+  report = null; saveDraft(); edit = null; viewDirty = false;
+  $("#viewBody").replaceChildren(); $("#viewScreen").classList.add("hidden");
   const b = $("#quitApp"); b.disabled = true; b.textContent = "削除中…";
   let msg = "";
   try {
@@ -617,7 +613,6 @@ $("#quitApp").onclick = async () => {
     }
   } catch (e) { msg = "データの削除に失敗しました（" + e.message + "）。"; }
   b.disabled = false; b.textContent = "終了";
-  report = null; saveDraft();
   $("#quitMsg").textContent = msg; $("#quitScreen").classList.remove("hidden");
   try { window.close(); } catch {}
 };
