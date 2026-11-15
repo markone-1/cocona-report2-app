@@ -46,6 +46,8 @@
   input[type=text], input[type=password], input[type=email], input[type=date] { padding: 10px; font-size: 1rem; font-family: inherit;
     border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
   input[type=date] { cursor: pointer; }
+  /* 欄を読み取り専用にすると右端の▼(カレンダー)印が消えるので、元どおり表示する */
+  input[type=date][readonly]::-webkit-calendar-picker-indicator { display: block; opacity: 1; visibility: visible; cursor: pointer; }
   .report-btns { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; }
   .report-btns #viewBtn { justify-self: start; }
   .report-btns #clearBtn { justify-self: end; }
@@ -91,12 +93,25 @@
   .paper .foot { display: flex; justify-content: flex-end; align-items: center; margin-top: 8px; font-size: .8rem; }
   .paper .add { padding: 6px 12px; font-size: .9rem; border-width: 1px; background: #fff; color: #0b63c5; border-color: #0b63c5; }
   .quit-screen { position: fixed; inset: 0; z-index: 50; background: var(--bg); display: grid; place-items: center; text-align: center; padding: 24px; }
+  /* 日付選択ダイアログ（端末標準のカレンダーはボタンが小さいので独自に作る） */
+  #dateDlg { width: min(400px, calc(100vw - 32px)); }
+  .cal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+  .cal-head b { font-size: 1.15rem; }
+  .cal-head button { width: 48px; height: 48px; padding: 0; font-size: 1.3rem; }
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
+  .cal .wd { font-size: .85rem; color: var(--sub); padding: 2px 0; }
+  .cal .sun { color: #d03030; } .cal .sat { color: #1d5fc4; }
+  .cal button { padding: 0; height: 46px; border-width: 1px; border-color: transparent; font-size: 1.05rem; border-radius: 8px; }
+  .cal button.today { border-color: var(--line-strong); }
+  .cal button.sel { background: #0b63c5; border-color: #0b63c5; color: #fff; font-weight: 700; }
+  #dateDlg .dlg-foot button { min-width: 120px; }
+  button.date-ok { background: #0b63c5; border-color: #0b63c5; color: #fff; font-weight: 700; }
   .quit-title { font-size: 1.4rem; font-weight: 700; margin: 0 0 8px; }
 </style>
 </head>
 <body>
 <header><div class="in">
-  <h1>作業日報 <small>Ver 11/02-q</small></h1>
+  <h1>作業日報 <small>Ver 11/16-a</small></h1>
   <div class="row" style="flex-wrap:nowrap;gap:8px">
     <button class="icon-btn" id="openSettings" aria-label="設定">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -127,7 +142,7 @@
   <section class="card">
     <h2>1. 日報作成</h2>
     <div class="row">
-      <input type="date" id="workDate" aria-label="作業日">
+      <input type="date" id="workDate" aria-label="作業日" readonly>
       <button id="fetchBtn" class="primary">日報作成</button>
     </div>
     <p class="warn" id="why" style="margin:8px 0 0"></p>
@@ -173,6 +188,14 @@
   </div>
 </dialog>
 
+<dialog id="dateDlg" aria-label="作業日を選ぶ">
+  <div class="dlg-head"><h2>作業日を選ぶ</h2></div>
+  <div class="dlg-body">
+    <div class="cal-head"><button id="calPrev" aria-label="前の月">‹</button><b id="calTitle"></b><button id="calNext" aria-label="次の月">›</button></div>
+    <div class="cal" id="calGrid"></div>
+  </div>
+  <div class="dlg-foot"><button id="calCancel">キャンセル</button><button id="calOk" class="date-ok">OK</button></div>
+</dialog>
 <dialog id="askDlg">
   <div class="dlg-body"><p id="askMsg" style="margin:0;white-space:pre-wrap"></p></div>
   <div class="dlg-foot"><button id="askNo">キャンセル</button><button id="askMid" class="hidden">反映しないで保存</button><button id="askYes" class="primary">OK</button></div>
@@ -620,8 +643,34 @@ $("#restart").onclick = () => location.reload();
 
 const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 $("#workDate").value = today;
-// 欄のどこを押してもカレンダーを開く（PC の Chrome は既定だと右端のアイコンでしか開かない）
-$("#workDate").onclick = (e) => { try { e.currentTarget.showPicker(); } catch {} };
+// 作業日の欄を押すとアプリ独自のカレンダーを開く（端末標準のカレンダーは「キャンセル」「OK」が小さく分かりにくいため）
+const cal = { y: 0, m: 0, sel: "" };
+const ymd = (y, m, d) => `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+function renderCal() {
+  $("#calTitle").textContent = `${cal.y}年${cal.m + 1}月`;
+  const g = $("#calGrid"); g.replaceChildren();
+  ["日", "月", "火", "水", "木", "金", "土"].forEach((w, i) => g.appendChild(el("div", "wd" + (i === 0 ? " sun" : i === 6 ? " sat" : ""), w)));
+  const first = new Date(cal.y, cal.m, 1).getDay(), days = new Date(cal.y, cal.m + 1, 0).getDate();
+  for (let i = 0; i < first; i++) g.appendChild(el("div"));
+  for (let d = 1; d <= days; d++) {
+    const v = ymd(cal.y, cal.m, d), wd = (first + d - 1) % 7;
+    const b = el("button", (wd === 0 ? "sun" : wd === 6 ? "sat" : "") + (v === today ? " today" : "") + (v === cal.sel ? " sel" : ""), String(d));
+    b.onclick = () => { cal.sel = v; renderCal(); };
+    g.appendChild(b);
+  }
+}
+function moveCal(n) { const d = new Date(cal.y, cal.m + n, 1); cal.y = d.getFullYear(); cal.m = d.getMonth(); renderCal(); }
+$("#calPrev").onclick = () => moveCal(-1);
+$("#calNext").onclick = () => moveCal(1);
+$("#calCancel").onclick = () => $("#dateDlg").close();
+$("#calOk").onclick = () => { if (cal.sel) $("#workDate").value = cal.sel; $("#dateDlg").close(); };
+$("#workDate").addEventListener("mousedown", (e) => e.preventDefault());
+$("#workDate").onclick = (e) => {
+  e.preventDefault();
+  cal.sel = $("#workDate").value || today;
+  const [y, m] = cal.sel.split("-").map(Number); cal.y = y; cal.m = m - 1;
+  renderCal(); $("#dateDlg").showModal();
+};
 try { report = JSON.parse(store.get(DRAFT) || "null"); } catch {}
 if (report) { $("#workDate").value = report.data.date; $("#status").textContent = reportLabel(); }
 updateUI();
