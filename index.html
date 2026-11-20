@@ -111,7 +111,7 @@
 </head>
 <body>
 <header><div class="in">
-  <h1>作業日報 <small>Ver 11/16-a</small></h1>
+  <h1>作業日報 <small>Ver 11/21-a</small></h1>
   <div class="row" style="flex-wrap:nowrap;gap:8px">
     <button class="icon-btn" id="openSettings" aria-label="設定">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -172,10 +172,24 @@
       <button id="mailAdd" style="flex:none">登録</button>
     </div>
     <ul class="mail-list" id="mailList"></ul>
+    <div class="row" style="margin-top:12px">
+      <button id="teijiBtn">定時送信を登録</button>
+      <span class="muted" id="teijiText"></span>
+    </div>
   </div>
   <div class="dlg-foot"><button id="cancelCfg">キャンセル</button><button id="saveCfg" class="primary">保存</button></div>
 </dialog>
 
+<dialog id="teijiDlg" aria-label="定時送信">
+  <div class="dlg-head"><h2>定時送信</h2></div>
+  <div class="dlg-body">
+    <p style="margin:0 0 10px">毎日この時刻に、前日の日報を送信先のメールアドレスへ送ります。前日の日報が無い日は送りません。</p>
+    <label for="teijiHour">送信する時刻</label>
+    <select id="teijiHour" class="wide" style="padding:10px;font-size:1.1rem;border-radius:8px"></select>
+    <p class="muted" style="margin:10px 0 0">登録した時刻から数分〜数十分遅れて届くことがあります。「保存」を押すと登録されます。</p>
+  </div>
+  <div class="dlg-foot"><button id="teijiOff">定時送信をやめる</button><button id="teijiCancel">キャンセル</button><button id="teijiOk" class="date-ok">決定</button></div>
+</dialog>
 <dialog id="mailDlg">
   <div class="dlg-head"><h2>メール送信</h2><button class="icon-btn" id="closeMail" aria-label="閉じる">✕</button></div>
   <div class="dlg-body">
@@ -261,14 +275,56 @@ function renderMail() {
     $("#mailList").appendChild(li);
   });
 }
-$("#openSettings").onclick = () => { const c = cfg(); $("#repo").value = c.repo; $("#token").value = c.token; renderMail(); $("#settingsDlg").showModal(); };
+// 定時送信：設定は処理用リポジトリの schedule.json に置き、GitHub の定時処理（teiji.yml）が毎時読む
+const SCHEDULE = "schedule.json";
+let teiji = null, teijiDirty = false, teijiMails = ""; // teiji = {enabled, hour}、teijiMails = 登録済みの送信先
+for (let h = 0; h < 24; h++) $("#teijiHour").add(new Option(`${h}:00`, String(h)));
+function renderTeiji() {
+  $("#teijiText").textContent = teiji?.enabled ? `毎日 ${teiji.hour}:00 に前日の日報を送信` + (teijiDirty ? "（未保存）" : "") : "定時送信：未登録" + (teijiDirty ? "（未保存）" : "");
+  $("#teijiBtn").textContent = teiji?.enabled ? "定時送信の時刻を変更" : "定時送信を登録";
+}
+async function loadTeiji() {
+  teiji = null; teijiDirty = false; renderTeiji();
+  if (!cfg().token) return;
+  try {
+    const f = await gh(`/contents/${SCHEDULE}?ref=main`, { allow404: true });
+    if (f) { const j = JSON.parse(new TextDecoder().decode(unb64(f.content))); teiji = { enabled: !!j.enabled, hour: Number(j.hour) || 0 }; teijiMails = JSON.stringify(j.mail_to || []); }
+  } catch { $("#teijiText").textContent = "定時送信の登録内容を読めませんでした"; return; }
+  renderTeiji();
+}
+async function saveTeiji() {
+  const body = JSON.stringify({ enabled: !!teiji?.enabled, hour: teiji?.hour ?? 0, mail_to: mailTo() }, null, 2) + String.fromCharCode(10);
+  const cur = await gh(`/contents/${SCHEDULE}?ref=main`, { allow404: true });
+  await gh(`/contents/${SCHEDULE}`, { method: "PUT", body: { message: "定時送信の設定を変更", branch: "main", sha: cur?.sha,
+    content: btoa(String.fromCharCode(...new TextEncoder().encode(body))) } });
+  teijiDirty = false;
+}
+$("#teijiBtn").onclick = () => {
+  $("#teijiHour").value = String(teiji?.enabled ? teiji.hour : 7);
+  $("#teijiOff").classList.toggle("hidden", !teiji?.enabled);
+  $("#teijiDlg").showModal();
+};
+$("#teijiCancel").onclick = () => $("#teijiDlg").close();
+$("#teijiOk").onclick = () => { teiji = { enabled: true, hour: Number($("#teijiHour").value) }; teijiDirty = true; renderTeiji(); $("#teijiDlg").close(); };
+$("#teijiOff").onclick = () => { teiji = { enabled: false, hour: teiji?.hour ?? 0 }; teijiDirty = true; renderTeiji(); $("#teijiDlg").close(); };
+$("#openSettings").onclick = () => { const c = cfg(); $("#repo").value = c.repo; $("#token").value = c.token; renderMail(); $("#settingsDlg").showModal(); loadTeiji(); };
 $("#closeSettings").onclick = $("#cancelCfg").onclick = () => $("#settingsDlg").close();
-$("#saveCfg").onclick = () => {
+$("#saveCfg").onclick = async () => {
   const repo = $("#repo").value.trim(), token = $("#token").value.trim();
   if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return note("処理用リポジトリは「ユーザー名/リポジトリ名」の形で入力してください");
   if (!token) return note("GitHub アクセストークンを入力してください");
   store.set("nippo_repo", repo); store.set("nippo_token", token);
   if (!storageOk) note("このブラウザでは設定を保存できません。シークレットモードを使っていないか確認してください。");
+  // 定時送信：時刻を変えたとき、または登録中に送信先を変えたときは、登録内容（時刻・送信先）を保存し直す
+  const mails = JSON.stringify(mailTo());
+  if (teijiDirty || (teiji?.enabled && mails !== teijiMails)) {
+    if (teiji?.enabled && !mailTo().length) return note("定時送信には送信先のメールアドレスを登録してください");
+    const b = $("#saveCfg"); b.disabled = true; b.textContent = "保存中…";
+    try { await saveTeiji(); teijiMails = mails; }
+    catch (e) { return note("定時送信の登録に失敗しました（" + e.message + "）"); }
+    finally { b.disabled = false; b.textContent = "保存"; }
+    note(teiji.enabled ? `定時送信を登録しました。毎日 ${teiji.hour}:00 ごろに前日の日報を送信します。` : "定時送信をやめました。");
+  }
   $("#settingsDlg").close(); updateUI();
 };
 $("#mailAdd").onclick = () => {
