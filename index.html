@@ -113,7 +113,7 @@
 </head>
 <body>
 <header><div class="in">
-  <h1>作業日報 <small>Ver 11/21-g</small></h1>
+  <h1>作業日報 <small>Ver 11/21-h</small></h1>
   <div class="row" style="flex-wrap:nowrap;gap:8px">
     <button class="icon-btn" id="openSettings" aria-label="設定">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -689,7 +689,7 @@ $("#quitApp").onclick = async () => {
       const refs = (await gh("/git/matching-refs/heads/job/")) || [];
       let nb = 0, nr = 0;
       for (const r of refs) if (!active.has(r.ref.replace("refs/heads/", ""))) { await gh(`/git/${r.ref}`, { method: "DELETE", allow404: true }); nb++; }
-      for (const r of runs) if (r.status === "completed") { await gh(`/actions/runs/${r.id}`, { method: "DELETE", allow404: true }); nr++; }
+      for (const r of runs) if (r.status === "completed" && !/teiji\.yml$/.test(r.path || "")) { // 定時送信の記録（ログ）は残す await gh(`/actions/runs/${r.id}`, { method: "DELETE", allow404: true }); nr++; }
       msg = `送信データ ${nb} 件・処理の記録 ${nr} 件を削除しました。`;
     }
   } catch (e) { msg = "データの削除に失敗しました（" + e.message + "）。"; }
